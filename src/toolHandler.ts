@@ -28,7 +28,7 @@ import {
   HoverTool,
   EvaluateTool,
   IframeFillTool,
-  GetTextTool
+  GetTextTool,
   UploadFileTool
 } from './tools/browser/interaction.js';
 import { 
