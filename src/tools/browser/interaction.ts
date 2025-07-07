@@ -246,3 +246,32 @@ export class PressKeyTool extends BrowserToolBase {
 //     });
 //   }
 // }
+
+/**
+ * Tool for getting text content of a specific element by selector
+ */
+export class GetTextTool extends BrowserToolBase {
+  /**
+   * Execute the get text tool
+   */
+  async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    return this.safeExecute(context, async (page) => {
+      if (!args.selector) {
+        return createErrorResponse('必须提供 selector');
+      }
+      const elementHandle = await page.waitForSelector(args.selector);
+      if (!elementHandle) {
+        return createErrorResponse('未找到指定元素');
+      }
+      const text = await elementHandle.textContent();
+      const name = args.name || 'text';
+      // 返回的 data 里带上 name 字段，方便后续处理
+      return {
+        ...createSuccessResponse(`元素[${name}]文本内容: ${text ?? ''}`),
+        data: {
+          [name]: text ?? ''
+        }
+      };
+    });
+  }
+}

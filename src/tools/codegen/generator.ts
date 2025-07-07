@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { CodegenAction, CodegenOptions, CodegenResult, CodegenSession, PlaywrightTestCase } from './types.js';
+import * as fs from 'fs';
 
 export class PlaywrightGenerator {
   private static readonly DEFAULT_OPTIONS: Required<CodegenOptions> = {
@@ -82,6 +83,8 @@ export class PlaywrightGenerator {
         return this.generateSelectStep(parameters);
       case 'playwright_custom_user_agent':
         return this.generateCustomUserAgentStep(parameters);
+      case 'playwright_get_text':
+        return this.generateGetTextStep(parameters);
       default:
         console.warn(`Unsupported tool: ${toolName}`);
         return null;
@@ -159,6 +162,13 @@ export class PlaywrightGenerator {
     await context.setUserAgent('${userAgent}');`;
   }
 
+  private generateGetTextStep(parameters: Record<string, unknown>): string {
+    const { selector, name } = parameters;
+    return `
+    // 获取【${name}】元素文本
+    const ${name || 'text'} = await page.textContent('${selector}');`;
+  }
+
   private generateTestCode(testCase: PlaywrightTestCase): string {
     const imports = Array.from(testCase.imports)
       .map(imp => `import { ${imp} } from '@playwright/test';`)
@@ -180,5 +190,19 @@ test('${testCase.name}', async ({ page, context }) => {
     const sanitizedPrefix = this.options.testNamePrefix.toLowerCase().replace(/[^a-z0-9_]/g, '_');
     const fileName = `${sanitizedPrefix}_${session.id}.spec.ts`;
     return path.resolve(this.options.outputPath, fileName);
+  }
+
+  /**
+   * 读取gencode保存的ts代码并返回内容
+   */
+  async readGeneratedTestCode(sessionId: string): Promise<string> {
+    if (!sessionId) throw new Error('Session ID is required');
+    // 复用getOutputFilePath逻辑
+    const fakeSession = { id: sessionId } as any;
+    const filePath = this.getOutputFilePath(fakeSession);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Test code file not found: ${filePath}`);
+    }
+    return fs.readFileSync(filePath, 'utf-8');
   }
 } 

@@ -422,6 +422,40 @@ export function createToolDefinitions() {
         required: ["selector"],
       },
     },
+    {
+      name: "playwright_get_text",
+      description: "获取指定元素的文本内容，仅支持CSS选择器selector参数，可选name参数用于指定变量名，便于区分和后续引用。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: { type: "string", description: "要获取文本的元素CSS选择器" },
+          name: { type: "string", description: "可选，获取到的文本内容存储的变量名，便于区分和后续引用" }
+        },
+        required: ["selector"]
+      },
+    },
+    {
+      name: "playwright_read_generated_code",
+      description: "读取gencode保存的ts代码并返回内容",
+      inputSchema: {
+        type: "object",
+        properties: {
+          sessionId: { type: "string", description: "要读取的codegen sessionId" }
+        },
+        required: ["sessionId"]
+      }
+    },
+    {
+      name: "playwright_connect_over_cdp",
+      description: "通过CDP端点接管已打开的浏览器（如 http://localhost:9222）",
+      inputSchema: {
+        type: "object",
+        properties: {
+          cdpEndpoint: { type: "string", description: "CDP端点URL，默认 http://localhost:9222" }
+        },
+        required: []
+      }
+    },
   ] as const satisfies Tool[];
 }
 
@@ -447,7 +481,8 @@ export const BROWSER_TOOLS = [
   "playwright_drag",
   "playwright_press_key",
   "playwright_save_as_pdf",
-  "playwright_click_and_switch_tab"
+  "playwright_click_and_switch_tab",
+  "playwright_get_text"
 ];
 
 // API Request tools for conditional launch
@@ -464,7 +499,8 @@ export const CODEGEN_TOOLS = [
   'start_codegen_session',
   'end_codegen_session',
   'get_codegen_session',
-  'clear_codegen_session'
+  'clear_codegen_session',
+  'playwright_read_generated_code'
 ];
 
 // All available tools

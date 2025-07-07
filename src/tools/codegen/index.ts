@@ -201,9 +201,31 @@ export const clearCodegenSession: Tool = {
   }
 };
 
+export const readGeneratedTestCode = {
+  name: 'playwright_read_generated_code',
+  description: '读取gencode保存的ts代码并返回内容',
+  parameters: {
+    type: 'object',
+    properties: {
+      sessionId: {
+        type: 'string',
+        description: '要读取的codegen sessionId'
+      }
+    },
+    required: ['sessionId']
+  },
+  handler: async ({ sessionId }: { sessionId: string }) => {
+    // 这里用默认options即可，因为getOutputFilePath只用到了testNamePrefix/outputPath
+    const generator = new PlaywrightGenerator();
+    const code = await generator.readGeneratedTestCode(sessionId);
+    return { code };
+  }
+};
+
 export const codegenTools = [
   startCodegenSession,
   endCodegenSession,
   getCodegenSession,
-  clearCodegenSession
+  clearCodegenSession,
+  readGeneratedTestCode
 ]; 

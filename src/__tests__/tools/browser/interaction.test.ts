@@ -1,4 +1,4 @@
-import { ClickTool,ClickAndSwitchTabTool, FillTool, SelectTool, HoverTool, EvaluateTool, IframeClickTool } from '../../../tools/browser/interaction.js';
+import { ClickTool,ClickAndSwitchTabTool, FillTool, SelectTool, HoverTool, EvaluateTool, IframeClickTool, GetTextTool } from '../../../tools/browser/interaction.js';
 import { NavigationTool } from '../../../tools/browser/navigation.js';
 import { ToolContext } from '../../../tools/common/types.js';
 import { Page, Browser } from 'playwright';
@@ -9,7 +9,7 @@ const mockPageClick = jest.fn().mockImplementation(() => Promise.resolve());
 const mockPageFill = jest.fn().mockImplementation(() => Promise.resolve());
 const mockPageSelectOption = jest.fn().mockImplementation(() => Promise.resolve());
 const mockPageHover = jest.fn().mockImplementation(() => Promise.resolve());
-const mockPageWaitForSelector = jest.fn().mockImplementation(() => Promise.resolve());
+const mockPageWaitForSelector = jest.fn() as any;
 const mockWaitForEvent = jest.fn().mockImplementation(() => Promise.resolve(mockNewPage));
 const mockWaitForLoadState = jest.fn().mockImplementation(() => Promise.resolve());
 const mockBringToFront = jest.fn().mockImplementation(() => Promise.resolve());
@@ -376,5 +376,43 @@ describe('NavigationTool', () => {
     expect(mockGoto).not.toHaveBeenCalled();
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Page is not available or has been closed');
+  });
+});
+
+describe('GetTextTool', () => {
+  let getTextTool: GetTextTool;
+  beforeEach(() => {
+    getTextTool = new GetTextTool(mockServer);
+  });
+
+  test('should get text content of an element', async () => {
+    const args = { selector: '#test-element' };
+    mockPageWaitForSelector.mockResolvedValueOnce({ textContent: () => Promise.resolve('hello world') });
+    const result = await getTextTool.execute(args, mockContext);
+    expect(mockPageWaitForSelector).toHaveBeenCalledWith('#test-element');
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('hello world');
+  });
+
+  test('should return error if element not found', async () => {
+    const args = { selector: '#not-exist' };
+    mockPageWaitForSelector.mockResolvedValueOnce(null as any);
+    const result = await getTextTool.execute(args, mockContext);
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('未找到指定元素');
+  });
+
+  test('should return error if selector is missing', async () => {
+    const args = {};
+    const result = await getTextTool.execute(args, mockContext);
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('必须提供 selector');
+  });
+
+  test('should return error if page is missing', async () => {
+    const args = { selector: '#test-element' };
+    const result = await getTextTool.execute(args, { server: mockServer } as ToolContext);
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Browser page not initialized');
   });
 });

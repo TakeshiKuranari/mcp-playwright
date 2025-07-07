@@ -8,7 +8,8 @@ import {
   startCodegenSession,
   endCodegenSession,
   getCodegenSession,
-  clearCodegenSession
+  clearCodegenSession,
+  readGeneratedTestCode
 } from './tools/codegen/index.js';
 import { 
   ScreenshotTool,
@@ -26,7 +27,8 @@ import {
   SelectTool,
   HoverTool,
   EvaluateTool,
-  IframeFillTool
+  IframeFillTool,
+  GetTextTool
 } from './tools/browser/interaction.js';
 import { 
   VisibleTextTool, 
@@ -43,6 +45,7 @@ import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { SaveAsPdfTool } from './tools/browser/output.js';
 import { ClickAndSwitchTabTool } from './tools/browser/interaction.js';
+import { ConnectOverCDPTool } from './tools/browser/connectOverCDP.js';
 
 // Global state
 let browser: Browser | undefined;
@@ -98,7 +101,8 @@ let dragTool: DragTool;
 let pressKeyTool: PressKeyTool;
 let saveAsPdfTool: SaveAsPdfTool;
 let clickAndSwitchTabTool: ClickAndSwitchTabTool;
-
+let getTextTool: GetTextTool;
+let connectOverCDPTool: ConnectOverCDPTool;
 
 interface BrowserSettings {
   viewport?: {
@@ -155,6 +159,24 @@ async function registerConsoleMessage(page) {
  */
 async function ensureBrowser(browserSettings?: BrowserSettings) {
   try {
+    // 优先复用全局 browser 和 page（无论是launch还是connectOverCDP方式）
+    if (global.browser && global.browser.isConnected()) {
+      browser = global.browser;
+      if (global.page && !global.page.isClosed()) {
+        page = global.page;
+        console.info("Reusing global browser and page");
+        return page!;
+      } else {
+        // page无效则新建
+        const context = global.browser.contexts()[0] || await global.browser.newContext();
+        page = await context.newPage();
+        await registerConsoleMessage(page);
+        console.info("Created new page");
+        global.page = page;
+        return page;
+      }
+    }
+
     // Check if browser exists but is disconnected
     if (browser && !browser.isConnected()) {
       console.error("Browser exists but is disconnected. Cleaning up...");
@@ -181,7 +203,7 @@ async function ensureBrowser(browserSettings?: BrowserSettings) {
         resetBrowserState();
       }
       
-      console.error(`Launching new ${browserType} browser instance...`);
+      console.info(`Launching new ${browserType} browser instance...`);
       
       // Use the appropriate browser engine
       let browserInstance;
@@ -337,6 +359,8 @@ function initializeTools(server: any) {
   if (!pressKeyTool) pressKeyTool = new PressKeyTool(server);
   if (!saveAsPdfTool) saveAsPdfTool = new SaveAsPdfTool(server);
   if (!clickAndSwitchTabTool) clickAndSwitchTabTool = new ClickAndSwitchTabTool(server);
+  if (!getTextTool) getTextTool = new GetTextTool(server);
+  if (!connectOverCDPTool) connectOverCDPTool = new ConnectOverCDPTool(server);
 }
 
 /**
@@ -361,6 +385,10 @@ export async function handleToolCall(
         return await handleCodegenResult(getCodegenSession.handler(args));
       case 'clear_codegen_session':
         return await handleCodegenResult(clearCodegenSession.handler(args));
+      case 'playwright_read_generated_code':
+        return await handleCodegenResult(readGeneratedTestCode.handler(args));
+      case 'playwright_connect_over_cdp':
+        return await connectOverCDPTool.execute(args);
     }
 
     // Record tool action if there's an active session
@@ -416,7 +444,8 @@ export async function handleToolCall(
   };
   
   // Set up browser if needed
-  if (BROWSER_TOOLS.includes(name)) {
+  // 如果name是playwright_connect_over_cdp，则不设置浏览器（不然会又启动一个浏览器）
+  if (BROWSER_TOOLS.includes(name) && name !== "playwright_connect_over_cdp") {
     const browserSettings = {
       viewport: {
         width: args.width,
@@ -537,6 +566,8 @@ export async function handleToolCall(
         return await saveAsPdfTool.execute(args, context);
       case "playwright_click_and_switch_tab":
         return await clickAndSwitchTabTool.execute(args, context);
+      case "playwright_get_text":
+        return await getTextTool.execute(args, context);
       
       default:
         return {
