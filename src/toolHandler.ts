@@ -18,7 +18,8 @@ import {
   ConsoleLogsTool,
   ExpectResponseTool,
   AssertResponseTool,
-  CustomUserAgentTool
+  CustomUserAgentTool,
+  SaveStorageStateTool // 新增
 } from './tools/browser/index.js';
 import {
   ClickTool,
@@ -105,6 +106,7 @@ let saveAsPdfTool: SaveAsPdfTool;
 let clickAndSwitchTabTool: ClickAndSwitchTabTool;
 let getTextTool: GetTextTool;
 let connectOverCDPTool: ConnectOverCDPTool;
+let saveStorageStateTool: SaveStorageStateTool;
 
 interface BrowserSettings {
   viewport?: {
@@ -353,6 +355,7 @@ function initializeTools(server: any) {
   if (!customUserAgentTool) customUserAgentTool = new CustomUserAgentTool(server);
   if (!visibleTextTool) visibleTextTool = new VisibleTextTool(server);
   if (!visibleHtmlTool) visibleHtmlTool = new VisibleHtmlTool(server);
+  if (!saveStorageStateTool) saveStorageStateTool = new SaveStorageStateTool(server);
   
   // API tools
   if (!getRequestTool) getRequestTool = new GetRequestTool(server);
@@ -548,6 +551,9 @@ export async function handleToolCall(
       
       case "playwright_get_visible_html":
         return await visibleHtmlTool.execute(args, context);
+        
+      case "playwright_save_storage_state":
+        return await saveStorageStateTool.execute(args, context);
         
       // API tools
       case "playwright_get":
