@@ -87,6 +87,7 @@ export function createToolDefinitions() {
           height: { type: "number", description: "Viewport height in pixels (default: 720)" },
           timeout: { type: "number", description: "Navigation timeout in milliseconds" },
           waitUntil: { type: "string", description: "Navigation wait condition" },
+          storageState: { type: "string", description: "用于还原登录状态的storageState文件路径（可选）" },
           headless: { type: "boolean", description: "Run browser in headless mode (default: false)" }
         },
         required: ["url"],
