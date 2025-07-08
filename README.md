@@ -133,3 +133,5 @@ Our server name is `playwright-mcp`. Please ensure your tool names are short eno
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=executeautomation/mcp-playwright&type=Date)](https://star-history.com/#executeautomation/mcp-playwright&Date)
+
+test
