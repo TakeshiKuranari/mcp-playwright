@@ -10,6 +10,23 @@ export class NavigationTool extends BrowserToolBase {
    * Execute the navigation tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    // 支持 storageState 参数
+    if (args.storageState) {
+      // 重新初始化 browser/page，带 storageState
+      const { ensureBrowser } = await import('../../toolHandler.js');
+      try {
+        context.page = await ensureBrowser({
+          storageState: args.storageState,
+          browserType: args.browserType,
+          headless: args.headless,
+          viewport: args.width || args.height ? { width: args.width, height: args.height } : undefined,
+          userAgent: args.userAgent
+        });
+        context.browser = context.page.context().browser();
+      } catch (e) {
+        return createErrorResponse(`使用登录状态文件初始化浏览器失败: ${(e as Error).message}`);
+      }
+    }
     // Check if browser is available
     if (!context.browser || !context.browser.isConnected()) {
       // If browser is not connected, we need to reset the state to force recreation

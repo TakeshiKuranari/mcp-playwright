@@ -116,6 +116,7 @@ interface BrowserSettings {
   userAgent?: string;
   headless?: boolean;
   browserType?: 'chromium' | 'firefox' | 'webkit';
+  storageState?: string;
 }
 
 async function registerConsoleMessage(page) {
@@ -195,7 +196,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Launch new browser if needed
     if (!browser) {
-      const { viewport, userAgent, headless = false, browserType = 'chromium' } = browserSettings ?? {};
+      const { viewport, userAgent, headless = false, browserType = 'chromium', storageState } = browserSettings ?? {};
       
       // If browser type is changing, force a new browser instance
       if (browser && currentBrowserType !== browserType) {
@@ -242,6 +243,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
       const context = await browser.newContext({
         ...userAgent && { userAgent },
+        ...(storageState ? { storageState } : {}),
         viewport: {
           width: viewport?.width ?? 1280,
           height: viewport?.height ?? 720,
@@ -281,7 +283,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     resetBrowserState();
     
     // Try one more time from scratch
-    const { viewport, userAgent, headless = false, browserType = 'chromium' } = browserSettings ?? {};
+    const { viewport, userAgent, headless = false, browserType = 'chromium', storageState } = browserSettings ?? {};
     
     // Use the appropriate browser engine
     let browserInstance;
@@ -309,6 +311,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     const context = await browser.newContext({
       ...userAgent && { userAgent },
+      ...(storageState ? { storageState } : {}),
       viewport: {
         width: viewport?.width ?? 1280,
         height: viewport?.height ?? 720,
@@ -465,7 +468,8 @@ export async function handleToolCall(
       },
       userAgent: name === "playwright_custom_user_agent" ? args.userAgent : undefined,
       headless: args.headless,
-      browserType: args.browserType || 'chromium'
+      browserType: args.browserType || 'chromium',
+      storageState: args.storageState // Pass storageState to ensureBrowser
     };
     
     try {
