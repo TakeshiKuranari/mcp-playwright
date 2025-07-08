@@ -477,6 +477,17 @@ export function createToolDefinitions() {
         required: []
       }
     },
+    {
+      name: "playwright_save_storage_state",
+      description: "保存当前浏览器登录状态到指定文件",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "要保存的状态文件路径（绝对路径或相对路径）" }
+        },
+        required: ["path"]
+      }
+    },
   ] as const satisfies Tool[];
 }
 
@@ -504,7 +515,8 @@ export const BROWSER_TOOLS = [
   "playwright_press_key",
   "playwright_save_as_pdf",
   "playwright_click_and_switch_tab",
-  "playwright_get_text"
+  "playwright_get_text",
+  "playwright_save_storage_state"
 ];
 
 // API Request tools for conditional launch
