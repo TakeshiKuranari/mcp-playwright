@@ -473,7 +473,8 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          cdpEndpoint: { type: "string", description: "CDP端点URL，默认 http://localhost:9222" }
+          cdpEndpoint: { type: "string", description: "CDP端点URL，默认 http://localhost:9222" },
+          windowTitle: { type: "string", description: "可选，接管浏览器后要切换到的窗口标题" }
         },
         required: []
       }
