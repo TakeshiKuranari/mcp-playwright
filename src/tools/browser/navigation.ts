@@ -10,13 +10,14 @@ export class NavigationTool extends BrowserToolBase {
    * Execute the navigation tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
-    // 支持 storageState 参数
-    if (args.storageState) {
-      // 重新初始化 browser/page，带 storageState
+    // 支持 user_data_dir 和 storageState 参数
+    if (args.user_data_dir || args.storageState) {
+      // 重新初始化 browser/page，带 user_data_dir 或 storageState
       const { ensureBrowser } = await import('../../toolHandler.js');
       try {
         context.page = await ensureBrowser({
-          storageState: args.storageState,
+          user_data_dir: args.user_data_dir,
+          storageState: args.user_data_dir ? undefined : args.storageState, // 如果有 user_data_dir 则忽略 storageState
           browserType: args.browserType,
           headless: args.headless,
           viewport: args.width || args.height ? { width: args.width, height: args.height } : undefined,
@@ -24,7 +25,10 @@ export class NavigationTool extends BrowserToolBase {
         });
         context.browser = context.page.context().browser();
       } catch (e) {
-        return createErrorResponse(`使用登录状态文件初始化浏览器失败: ${(e as Error).message}`);
+        const errorMsg = args.user_data_dir 
+          ? `使用持久化用户数据目录初始化浏览器失败: ${(e as Error).message}`
+          : `使用登录状态文件初始化浏览器失败: ${(e as Error).message}`;
+        return createErrorResponse(errorMsg);
       }
     }
     // Check if browser is available

@@ -117,6 +117,7 @@ interface BrowserSettings {
   headless?: boolean;
   browserType?: 'chromium' | 'firefox' | 'webkit';
   storageState?: string;
+  user_data_dir?: string;
 }
 
 async function registerConsoleMessage(page) {
@@ -196,7 +197,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Launch new browser if needed
     if (!browser) {
-      const { viewport, userAgent, headless = false, browserType = 'chromium', storageState } = browserSettings ?? {};
+      const { viewport, userAgent, headless = false, browserType = 'chromium', storageState, user_data_dir } = browserSettings ?? {};
       
       // If browser type is changing, force a new browser instance
       if (browser && currentBrowserType !== browserType) {
@@ -227,31 +228,60 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       
       const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
-      browser = await browserInstance.launch({
-        headless,
-        executablePath: executablePath
-      });
-      
-      currentBrowserType = browserType;
+      // 如果提供了 user_data_dir，使用 launchPersistentContext
+      if (user_data_dir) {
+        console.info(`Using persistent context with user data directory: ${user_data_dir}`);
+        
+        const context = await browserInstance.launchPersistentContext(user_data_dir, {
+          headless,
+          executablePath: executablePath,
+          ...userAgent && { userAgent },
+          viewport: {
+            width: viewport?.width ?? 1280,
+            height: viewport?.height ?? 720,
+          },
+          deviceScaleFactor: 1,
+        });
+        
+        browser = context.browser();
+        page = context.pages()[0] || await context.newPage();
+        
+        currentBrowserType = browserType;
 
-      // Add cleanup logic when browser is disconnected
-      browser.on('disconnected', () => {
-        console.error("Browser disconnected event triggered");
-        browser = undefined;
-        page = undefined;
-      });
+        // Add cleanup logic when browser is disconnected
+        browser.on('disconnected', () => {
+          console.error("Browser disconnected event triggered");
+          browser = undefined;
+          page = undefined;
+        });
+      } else {
+        // 使用普通的 launch 方式
+        browser = await browserInstance.launch({
+          headless,
+          executablePath: executablePath
+        });
+        
+        currentBrowserType = browserType;
 
-      const context = await browser.newContext({
-        ...userAgent && { userAgent },
-        ...(storageState ? { storageState } : {}),
-        viewport: {
-          width: viewport?.width ?? 1280,
-          height: viewport?.height ?? 720,
-        },
-        deviceScaleFactor: 1,
-      });
+        // Add cleanup logic when browser is disconnected
+        browser.on('disconnected', () => {
+          console.error("Browser disconnected event triggered");
+          browser = undefined;
+          page = undefined;
+        });
 
-      page = await context.newPage();
+        const context = await browser.newContext({
+          ...userAgent && { userAgent },
+          ...(storageState ? { storageState } : {}),
+          viewport: {
+            width: viewport?.width ?? 1280,
+            height: viewport?.height ?? 720,
+          },
+          deviceScaleFactor: 1,
+        });
+
+        page = await context.newPage();
+      }
 
       // Register console message handler
       await registerConsoleMessage(page);
@@ -283,7 +313,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     resetBrowserState();
     
     // Try one more time from scratch
-    const { viewport, userAgent, headless = false, browserType = 'chromium', storageState } = browserSettings ?? {};
+    const { viewport, userAgent, headless = false, browserType = 'chromium', storageState, user_data_dir } = browserSettings ?? {};
     
     // Use the appropriate browser engine
     let browserInstance;
@@ -300,26 +330,53 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         break;
     }
     
-    browser = await browserInstance.launch({ headless });
-    currentBrowserType = browserType;
-    
-    browser.on('disconnected', () => {
-      console.error("Browser disconnected event triggered (retry)");
-      browser = undefined;
-      page = undefined;
-    });
+    // 如果提供了 user_data_dir，使用 launchPersistentContext
+    if (user_data_dir) {
+      console.info(`Retry: Using persistent context with user data directory: ${user_data_dir}`);
+      
+      const context = await browserInstance.launchPersistentContext(user_data_dir, {
+        headless,
+        ...userAgent && { userAgent },
+        viewport: {
+          width: viewport?.width ?? 1280,
+          height: viewport?.height ?? 720,
+        },
+        deviceScaleFactor: 1,
+      });
+      
+      browser = context.browser();
+      page = context.pages()[0] || await context.newPage();
+      
+      currentBrowserType = browserType;
+      
+      browser.on('disconnected', () => {
+        console.error("Browser disconnected event triggered (retry)");
+        browser = undefined;
+        page = undefined;
+      });
+    } else {
+      // 使用普通的 launch 方式
+      browser = await browserInstance.launch({ headless });
+      currentBrowserType = browserType;
+      
+      browser.on('disconnected', () => {
+        console.error("Browser disconnected event triggered (retry)");
+        browser = undefined;
+        page = undefined;
+      });
 
-    const context = await browser.newContext({
-      ...userAgent && { userAgent },
-      ...(storageState ? { storageState } : {}),
-      viewport: {
-        width: viewport?.width ?? 1280,
-        height: viewport?.height ?? 720,
-      },
-      deviceScaleFactor: 1,
-    });
+      const context = await browser.newContext({
+        ...userAgent && { userAgent },
+        ...(storageState ? { storageState } : {}),
+        viewport: {
+          width: viewport?.width ?? 1280,
+          height: viewport?.height ?? 720,
+        },
+        deviceScaleFactor: 1,
+      });
 
-    page = await context.newPage();
+      page = await context.newPage();
+    }
     
     await registerConsoleMessage(page);
     
@@ -469,7 +526,8 @@ export async function handleToolCall(
       userAgent: name === "playwright_custom_user_agent" ? args.userAgent : undefined,
       headless: args.headless,
       browserType: args.browserType || 'chromium',
-      storageState: args.storageState // Pass storageState to ensureBrowser
+      storageState: args.storageState, // Pass storageState to ensureBrowser
+      user_data_dir: args.user_data_dir // Pass user_data_dir to ensureBrowser
     };
     
     try {
