@@ -94,6 +94,12 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml } = args;
         // Default removeScripts to true unless explicitly set to false
         const removeScripts = args.removeScripts === false ? false : true;
+        // Set default values to true for these parameters
+        const shouldRemoveComments = removeComments === false ? false : true;
+        const shouldRemoveStyles = removeStyles === false ? false : true;
+        const shouldRemoveMeta = removeMeta === false ? false : true;
+        const shouldMinify = minify === false ? false : true;
+        const shouldCleanHtml = cleanHtml === false ? false : true;
 
         // Get the HTML content
         let htmlContent: string;
@@ -111,13 +117,13 @@ export class VisibleHtmlTool extends BrowserToolBase {
         }
 
         // Determine if we need to apply filters
-        const shouldRemoveScripts = removeScripts || cleanHtml;
-        const shouldRemoveComments = removeComments || cleanHtml;
-        const shouldRemoveStyles = removeStyles || cleanHtml;
-        const shouldRemoveMeta = removeMeta || cleanHtml;
+        const shouldRemoveScripts = removeScripts || shouldCleanHtml;
+        const shouldRemoveCommentsFinal = shouldRemoveComments || shouldCleanHtml;
+        const shouldRemoveStylesFinal = shouldRemoveStyles || shouldCleanHtml;
+        const shouldRemoveMetaFinal = shouldRemoveMeta || shouldCleanHtml;
 
         // Apply filters in the browser context
-        if (shouldRemoveScripts || shouldRemoveComments || shouldRemoveStyles || shouldRemoveMeta || minify) {
+        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify) {
           htmlContent = await page.evaluate(
             ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify }) => {
               // Create a DOM parser to work with the HTML
@@ -172,10 +178,10 @@ export class VisibleHtmlTool extends BrowserToolBase {
             {
               html: htmlContent,
               removeScripts: shouldRemoveScripts,
-              removeComments: shouldRemoveComments,
-              removeStyles: shouldRemoveStyles,
-              removeMeta: shouldRemoveMeta,
-              minify
+              removeComments: shouldRemoveCommentsFinal,
+              removeStyles: shouldRemoveStylesFinal,
+              removeMeta: shouldRemoveMetaFinal,
+              minify: shouldMinify
             }
           );
         }

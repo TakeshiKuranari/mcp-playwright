@@ -307,17 +307,17 @@ Get the HTML content of the current page.
 - **Inputs:**
   - **`selector`** *(string, optional)*:  
     CSS selector to limit the HTML to a specific container. If provided, only returns the HTML for that element.
-  - **`removeScripts`** *(boolean, optional, default: false)*:  
+  - **`removeScripts`** *(boolean, optional, default: true)*:  
     Remove all script tags from the HTML to reduce noise.
-  - **`removeComments`** *(boolean, optional, default: false)*:  
+  - **`removeComments`** *(boolean, optional, default: true)*:  
     Remove all HTML comments to clean up the output.
-  - **`removeStyles`** *(boolean, optional, default: false)*:  
+  - **`removeStyles`** *(boolean, optional, default: true)*:  
     Remove all style tags from the HTML.
-  - **`removeMeta`** *(boolean, optional, default: false)*:  
+  - **`removeMeta`** *(boolean, optional, default: true)*:  
     Remove all meta tags from the HTML head section.
-  - **`minify`** *(boolean, optional, default: false)*:  
+  - **`minify`** *(boolean, optional, default: true)*:  
     Minify the HTML output by removing extra whitespace.
-  - **`cleanHtml`** *(boolean, optional, default: false)*:  
+  - **`cleanHtml`** *(boolean, optional, default: true)*:  
     Convenience option that combines removeScripts, removeComments, removeStyles, and removeMeta for a cleaner HTML output.
 
 - **Response:**
