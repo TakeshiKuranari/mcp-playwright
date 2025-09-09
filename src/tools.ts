@@ -364,6 +364,7 @@ export function createToolDefinitions() {
           cleanHtml: { type: "boolean", description: "Perform comprehensive HTML cleaning (default: true)" },
           minify: { type: "boolean", description: "Minify the HTML output (default: true)" },
           removeHide: { type: "boolean", description: "过滤不可见元素 (default: true)" },
+          removeBase64: { type: "boolean", description: "过滤base64数据 (default: true)" },
           maxLength: { type: "number", description: "Maximum number of characters to return (default: 20000)" }
         },
         required: [],

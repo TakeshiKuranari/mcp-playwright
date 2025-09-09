@@ -91,7 +91,7 @@ export class VisibleHtmlTool extends BrowserToolBase {
     }
     return this.safeExecute(context, async (page) => {
       try {
-        const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml, removeHide } = args;
+        const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml, removeHide, removeBase64 } = args;
         // Default removeScripts to true unless explicitly set to false
         const removeScripts = args.removeScripts === false ? false : true;
         // Set default values to true for these parameters
@@ -101,6 +101,7 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const shouldMinify = minify === false ? false : true;
         const shouldCleanHtml = cleanHtml === false ? false : true;
         const shouldRemoveHide = removeHide === false ? false : true;
+        const shouldRemoveBase64 = removeBase64 === false ? false : true;
 
         // Get the HTML content
         let htmlContent: string;
@@ -124,9 +125,9 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const shouldRemoveMetaFinal = shouldRemoveMeta || shouldCleanHtml;
 
         // Apply filters in the browser context
-        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify || shouldRemoveHide) {
+        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify || shouldRemoveHide || shouldRemoveBase64) {
           htmlContent = await page.evaluate(
-            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify, removeHide }) => {
+            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify, removeHide, removeBase64 }) => {
               // Create a DOM parser to work with the HTML
               const parser = new DOMParser();
               const doc = parser.parseFromString(html, 'text/html');
@@ -185,6 +186,44 @@ export class VisibleHtmlTool extends BrowserToolBase {
                 removeHiddenElements(doc.documentElement);
               }
 
+              // Remove base64 data from attributes if requested
+              if (removeBase64) {
+                const removeBase64FromAttributes = (node) => {
+                  if (node.nodeType === 1) { // 1 is for element nodes
+                    const element = node as Element;
+                    const attributes = element.attributes;
+                    
+                    // Check all attributes for base64 data
+                    for (let i = attributes.length - 1; i >= 0; i--) {
+                      const attr = attributes[i];
+                      const value = attr.value;
+                      
+                      // Check if attribute value contains base64 data
+                      if (value && (
+                        value.includes('data:image/') ||
+                        value.includes('data:audio/') ||
+                        value.includes('data:video/') ||
+                        value.includes('data:application/') ||
+                        value.includes('data:text/') ||
+                        value.includes('data:font/') ||
+                        value.startsWith('data:') ||
+                        // Check for base64 encoded strings (long strings with base64 characters)
+                        (value.length > 100 && /^[A-Za-z0-9+/=]+$/.test(value))
+                      )) {
+                        element.removeAttribute(attr.name);
+                      }
+                    }
+                  }
+                  
+                  // Recursively process child nodes
+                  const childNodes = node.childNodes;
+                  for (let i = 0; i < childNodes.length; i++) {
+                    removeBase64FromAttributes(childNodes[i]);
+                  }
+                };
+                removeBase64FromAttributes(doc.documentElement);
+              }
+
               // Get the processed HTML
               let result = doc.documentElement.outerHTML;
 
@@ -203,7 +242,8 @@ export class VisibleHtmlTool extends BrowserToolBase {
               removeStyles: shouldRemoveStylesFinal,
               removeMeta: shouldRemoveMetaFinal,
               minify: shouldMinify,
-              removeHide: shouldRemoveHide
+              removeHide: shouldRemoveHide,
+              removeBase64: shouldRemoveBase64
             }
           );
         }
