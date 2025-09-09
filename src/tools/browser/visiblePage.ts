@@ -91,7 +91,7 @@ export class VisibleHtmlTool extends BrowserToolBase {
     }
     return this.safeExecute(context, async (page) => {
       try {
-        const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml } = args;
+        const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml, removeHide } = args;
         // Default removeScripts to true unless explicitly set to false
         const removeScripts = args.removeScripts === false ? false : true;
         // Set default values to true for these parameters
@@ -100,6 +100,7 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const shouldRemoveMeta = removeMeta === false ? false : true;
         const shouldMinify = minify === false ? false : true;
         const shouldCleanHtml = cleanHtml === false ? false : true;
+        const shouldRemoveHide = removeHide === false ? false : true;
 
         // Get the HTML content
         let htmlContent: string;
@@ -123,9 +124,9 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const shouldRemoveMetaFinal = shouldRemoveMeta || shouldCleanHtml;
 
         // Apply filters in the browser context
-        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify) {
+        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify || shouldRemoveHide) {
           htmlContent = await page.evaluate(
-            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify }) => {
+            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify, removeHide }) => {
               // Create a DOM parser to work with the HTML
               const parser = new DOMParser();
               const doc = parser.parseFromString(html, 'text/html');
@@ -164,6 +165,26 @@ export class VisibleHtmlTool extends BrowserToolBase {
                 removeComments(doc.documentElement);
               }
 
+              // Remove elements with display: none if requested
+              if (removeHide) {
+                const removeHiddenElements = (node) => {
+                  const childNodes = node.childNodes;
+                  for (let i = childNodes.length - 1; i >= 0; i--) {
+                    const child = childNodes[i];
+                    if (child.nodeType === 1) { // 1 is for element nodes
+                      const element = child as Element;
+                      const style = element.getAttribute('style');
+                      if (style && (style.includes('display: none') || style.includes('display:none'))) {
+                        node.removeChild(child);
+                      } else {
+                        removeHiddenElements(child);
+                      }
+                    }
+                  }
+                };
+                removeHiddenElements(doc.documentElement);
+              }
+
               // Get the processed HTML
               let result = doc.documentElement.outerHTML;
 
@@ -181,7 +202,8 @@ export class VisibleHtmlTool extends BrowserToolBase {
               removeComments: shouldRemoveCommentsFinal,
               removeStyles: shouldRemoveStylesFinal,
               removeMeta: shouldRemoveMetaFinal,
-              minify: shouldMinify
+              minify: shouldMinify,
+              removeHide: shouldRemoveHide
             }
           );
         }

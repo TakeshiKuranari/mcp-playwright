@@ -363,6 +363,7 @@ export function createToolDefinitions() {
           removeMeta: { type: "boolean", description: "Remove all meta tags from the HTML (default: true)" },
           cleanHtml: { type: "boolean", description: "Perform comprehensive HTML cleaning (default: true)" },
           minify: { type: "boolean", description: "Minify the HTML output (default: true)" },
+          removeHide: { type: "boolean", description: "过滤不可见元素 (default: true)" },
           maxLength: { type: "number", description: "Maximum number of characters to return (default: 20000)" }
         },
         required: [],
