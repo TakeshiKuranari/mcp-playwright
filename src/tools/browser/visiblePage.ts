@@ -91,7 +91,7 @@ export class VisibleHtmlTool extends BrowserToolBase {
     }
     return this.safeExecute(context, async (page) => {
       try {
-        const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml, removeHide, removeBase64 } = args;
+        const { selector, removeComments, removeStyles, removeMeta, minify, cleanHtml, removeHide, removeBase64, removeSvgPath } = args;
         // Default removeScripts to true unless explicitly set to false
         const removeScripts = args.removeScripts === false ? false : true;
         // Set default values to true for these parameters
@@ -102,6 +102,7 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const shouldCleanHtml = cleanHtml === false ? false : true;
         const shouldRemoveHide = removeHide === false ? false : true;
         const shouldRemoveBase64 = removeBase64 === false ? false : true;
+        const shouldRemoveSvgPath = removeSvgPath === false ? false : true;
 
         // Get the HTML content
         let htmlContent: string;
@@ -125,9 +126,9 @@ export class VisibleHtmlTool extends BrowserToolBase {
         const shouldRemoveMetaFinal = shouldRemoveMeta || shouldCleanHtml;
 
         // Apply filters in the browser context
-        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify || shouldRemoveHide || shouldRemoveBase64) {
+        if (shouldRemoveScripts || shouldRemoveCommentsFinal || shouldRemoveStylesFinal || shouldRemoveMetaFinal || shouldMinify || shouldRemoveHide || shouldRemoveBase64 || shouldRemoveSvgPath) {
           htmlContent = await page.evaluate(
-            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify, removeHide, removeBase64 }) => {
+            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify, removeHide, removeBase64, removeSvgPath }) => {
               // Create a DOM parser to work with the HTML
               const parser = new DOMParser();
               const doc = parser.parseFromString(html, 'text/html');
@@ -224,6 +225,12 @@ export class VisibleHtmlTool extends BrowserToolBase {
                 removeBase64FromAttributes(doc.documentElement);
               }
 
+              // Remove SVG path elements if requested
+              if (removeSvgPath) {
+                const pathElements = doc.querySelectorAll('path');
+                pathElements.forEach(path => path.remove());
+              }
+
               // Get the processed HTML
               let result = doc.documentElement.outerHTML;
 
@@ -243,7 +250,8 @@ export class VisibleHtmlTool extends BrowserToolBase {
               removeMeta: shouldRemoveMetaFinal,
               minify: shouldMinify,
               removeHide: shouldRemoveHide,
-              removeBase64: shouldRemoveBase64
+              removeBase64: shouldRemoveBase64,
+              removeSvgPath: shouldRemoveSvgPath
             }
           );
         }
