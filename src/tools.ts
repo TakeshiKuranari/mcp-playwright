@@ -494,6 +494,17 @@ export function createToolDefinitions() {
         required: ["path"]
       }
     },
+    {
+      name: "playwright_get_xpath",
+      description: "获取页面上某个元素的XPath",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: { type: "string", description: "用于定位元素的CSS选择器" }
+        },
+        required: ["selector"]
+      }
+    },
   ] as const satisfies Tool[];
 }
 
@@ -522,7 +533,8 @@ export const BROWSER_TOOLS = [
   "playwright_save_as_pdf",
   "playwright_click_and_switch_tab",
   "playwright_get_text",
-  "playwright_save_storage_state"
+  "playwright_save_storage_state",
+  "playwright_get_xpath"
 ];
 
 // API Request tools for conditional launch

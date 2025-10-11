@@ -32,6 +32,7 @@ import {
   GetTextTool,
   UploadFileTool
 } from './tools/browser/interaction.js';
+import { GetXpathTool } from './tools/browser/getXpath.js';
 import { 
   VisibleTextTool, 
   VisibleHtmlTool 
@@ -90,6 +91,7 @@ let assertResponseTool: AssertResponseTool;
 let customUserAgentTool: CustomUserAgentTool;
 let visibleTextTool: VisibleTextTool;
 let visibleHtmlTool: VisibleHtmlTool;
+let getXpathTool: GetXpathTool;
 
 let getRequestTool: GetRequestTool;
 let postRequestTool: PostRequestTool;
@@ -416,7 +418,8 @@ function initializeTools(server: any) {
   if (!visibleTextTool) visibleTextTool = new VisibleTextTool(server);
   if (!visibleHtmlTool) visibleHtmlTool = new VisibleHtmlTool(server);
   if (!saveStorageStateTool) saveStorageStateTool = new SaveStorageStateTool(server);
-  
+  if (!getXpathTool) getXpathTool = new GetXpathTool(server);
+
   // API tools
   if (!getRequestTool) getRequestTool = new GetRequestTool(server);
   if (!postRequestTool) postRequestTool = new PostRequestTool(server);
@@ -565,37 +568,37 @@ export async function handleToolCall(
       // Browser tools
       case "playwright_navigate":
         return await navigationTool.execute(args, context);
-        
+
       case "playwright_screenshot":
         return await screenshotTool.execute(args, context);
-        
+
       case "playwright_close":
         return await closeBrowserTool.execute(args, context);
-        
+
       case "playwright_console_logs":
         return await consoleLogsTool.execute(args, context);
-        
+
       case "playwright_click":
         return await clickTool.execute(args, context);
-        
+
       case "playwright_iframe_click":
         return await iframeClickTool.execute(args, context);
 
       case "playwright_iframe_fill":
         return await iframeFillTool.execute(args, context);
-        
+
       case "playwright_fill":
         return await fillTool.execute(args, context);
-        
+
       case "playwright_select":
         return await selectTool.execute(args, context);
-        
+
       case "playwright_hover":
         return await hoverTool.execute(args, context);
 
       case "playwright_upload_file":
         return await uploadFileTool.execute(args, context);
-        
+
       case "playwright_evaluate":
         return await evaluateTool.execute(args, context);
 
@@ -607,32 +610,35 @@ export async function handleToolCall(
 
       case "playwright_custom_user_agent":
         return await customUserAgentTool.execute(args, context);
-        
+
       case "playwright_get_visible_text":
         return await visibleTextTool.execute(args, context);
-      
+
       case "playwright_get_visible_html":
         return await visibleHtmlTool.execute(args, context);
-        
+
       case "playwright_save_storage_state":
         return await saveStorageStateTool.execute(args, context);
-        
+
+      case "playwright_get_xpath":
+        return await getXpathTool.execute(args, context);
+
       // API tools
       case "playwright_get":
         return await getRequestTool.execute(args, context);
-        
+
       case "playwright_post":
         return await postRequestTool.execute(args, context);
-        
+
       case "playwright_put":
         return await putRequestTool.execute(args, context);
-        
+
       case "playwright_patch":
         return await patchRequestTool.execute(args, context);
-        
+
       case "playwright_delete":
         return await deleteRequestTool.execute(args, context);
-      
+
       // New tools
       case "playwright_go_back":
         return await goBackTool.execute(args, context);
@@ -648,7 +654,7 @@ export async function handleToolCall(
         return await clickAndSwitchTabTool.execute(args, context);
       case "playwright_get_text":
         return await getTextTool.execute(args, context);
-      
+
       default:
         return {
           content: [{

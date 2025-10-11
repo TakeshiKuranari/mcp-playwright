@@ -6,6 +6,7 @@ export * from './interaction.js';
 export * from './response.js';
 export * from './useragent.js';
 export * from './saveStorageState.js';
+export * from './getXpath.js';
 
 // TODO: Add exports for other browser tools as they are implemented
 // export * from './interaction.js'; 
