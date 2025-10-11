@@ -33,9 +33,11 @@
     "@playwright/browser-firefox": "1.53.1",
     "@playwright/browser-webkit": "1.53.1",
     "@playwright/test": "^1.53.1",
+    "koa": "^3.0.1",
     "mcp-evals": "^1.0.18",
     "playwright": "1.53.1",
-    "uuid": "11.1.0"
+    "uuid": "11.1.0",
+    "ws": "^8.18.3"
   },
   "keywords": [
     "playwright",
