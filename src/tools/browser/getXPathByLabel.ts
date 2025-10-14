@@ -37,12 +37,25 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       // 获取控件的XPath
       const result = await this.getXPathByLabel(page, label, controlType);
 
-      // 如果找到了XPath，返回XPath
+      // 如果找到了XPath，返回XPath和元素信息
       if (result.xpath) {
+        // 获取元素的HTML信息
+        let elementInfo = '';
+        try {
+          const elementHandle = await page.waitForSelector(`xpath=${result.xpath}`, { timeout: TIMEOUT_MS });
+          const elementHtml = await elementHandle.evaluate(el => el.outerHTML);
+          elementInfo = elementHtml;
+        } catch (e) {
+          elementInfo = '无法获取元素详细信息';
+        }
+
         return {
           content: [{
             type: "text",
-            text: JSON.stringify({ xpath: result.xpath }),
+            text: JSON.stringify({
+              xpath: result.xpath,
+              element: elementInfo
+            }),
           }],
           isError: false,
         };
@@ -358,8 +371,10 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         return getPathTo(element);
       }, xpath, { timeout: TIMEOUT_MS });
 
-      log(`[getElementXPath] 获取到的完整XPath: ${fullXPath}`);
-      return fullXPath as any;
+      // 获取实际的字符串值
+      const xpathValue = await fullXPath.jsonValue();
+      log(`[getElementXPath] 获取到的完整XPath: ${xpathValue}`);
+      return xpathValue as string;
     } catch (e) {
       log(`[getElementXPath] 获取元素XPath时出错: ${e}`);
       // 捕获超时或其他错误，但不抛出异常
