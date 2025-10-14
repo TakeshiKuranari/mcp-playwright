@@ -477,6 +477,20 @@ export function createToolDefinitions() {
       }
     },
 */
+
+    {
+      name: "playwright_connect_over_cdp",
+      description: "通过CDP端点接管已打开的浏览器（如 http://localhost:9222）",
+      inputSchema: {
+        type: "object",
+        properties: {
+          cdpEndpoint: { type: "string", description: "CDP端点URL，默认 http://localhost:9222" },
+          windowTitle: { type: "string", description: "可选，接管浏览器后要切换到的窗口标题" }
+        },
+        required: []
+      }
+    },
+
     {
       name: "playwright_get_xpath_by_label",
       description: "根据字段标签获取控件XPath",
