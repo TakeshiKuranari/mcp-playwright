@@ -48,6 +48,7 @@ import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { SaveAsPdfTool } from './tools/browser/output.js';
 import { ClickAndSwitchTabTool } from './tools/browser/interaction.js';
 import { ConnectOverCDPTool } from './tools/browser/connectOverCDP.js';
+import { GetXPathByLabelTool } from './tools/browser/getXPathByLabel.js';
 
 // Global state
 let browser: Browser | undefined;
@@ -107,6 +108,7 @@ let clickAndSwitchTabTool: ClickAndSwitchTabTool;
 let getTextTool: GetTextTool;
 let connectOverCDPTool: ConnectOverCDPTool;
 let saveStorageStateTool: SaveStorageStateTool;
+let getXPathByLabelTool: GetXPathByLabelTool;
 
 interface BrowserSettings {
   viewport?: {
@@ -435,6 +437,7 @@ function initializeTools(server: any) {
   if (!clickAndSwitchTabTool) clickAndSwitchTabTool = new ClickAndSwitchTabTool(server);
   if (!getTextTool) getTextTool = new GetTextTool(server);
   if (!connectOverCDPTool) connectOverCDPTool = new ConnectOverCDPTool(server);
+  if (!getXPathByLabelTool) getXPathByLabelTool = new GetXPathByLabelTool(server);
 }
 
 /**
@@ -654,6 +657,9 @@ export async function handleToolCall(
         return await clickAndSwitchTabTool.execute(args, context);
       case "playwright_get_text":
         return await getTextTool.execute(args, context);
+
+      case "playwright_get_xpath_by_label":
+        return await getXPathByLabelTool.execute(args, context);
       
       default:
         return {

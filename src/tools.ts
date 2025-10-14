@@ -478,15 +478,22 @@ export function createToolDefinitions() {
     },
 */
     {
-      name: "playwright_connect_over_cdp",
-      description: "通过CDP端点接管已打开的浏览器（如 http://localhost:9222）",
+      name: "playwright_get_xpath_by_label",
+      description: "根据字段标签获取控件XPath",
       inputSchema: {
         type: "object",
         properties: {
-          cdpEndpoint: { type: "string", description: "CDP端点URL，默认 http://localhost:9222" },
-          windowTitle: { type: "string", description: "可选，接管浏览器后要切换到的窗口标题" }
+          label: {
+            type: "string",
+            description: "字段标签名称(如:姓名, 性别, 年龄等)"
+          },
+          controlType: {
+            type: "string",
+            description: "控件类型(可选,如:输入框, 下拉框, 复选框, 单选按钮等)",
+            enum: ["输入框", "下拉框", "复选框", "单选按钮"]
+          }
         },
-        required: []
+        required: ["label"]
       }
     },
     {
@@ -528,7 +535,8 @@ export const BROWSER_TOOLS = [
   "playwright_save_as_pdf",
   "playwright_click_and_switch_tab",
   "playwright_get_text",
-  "playwright_save_storage_state"
+  "playwright_save_storage_state",
+  "playwright_get_xpath_by_label"
 ];
 
 // API Request tools for conditional launch
