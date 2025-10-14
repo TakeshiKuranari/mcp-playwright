@@ -225,8 +225,47 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       }
     }
 
-    // 5. 最后，直接查找包含标签文本的控件元素
-    log(`[GetXPathByLabel] 策略5: 直接查找包含标签文本的控件元素`);
+    // 5. 查找标签祖先节点下的控件元素
+    log(`[GetXPathByLabel] 策略5: 查找标签祖先节点下的控件元素`);
+    for (const labelXPath of labelXPaths) {
+      try {
+        log(`[GetXPathByLabel] 等待标签元素出现: ${labelXPath}`);
+        await page.waitForSelector(`xpath=${labelXPath}`, { timeout: TIMEOUT_MS });
+        log(`[GetXPathByLabel] 标签元素已找到: ${labelXPath}`);
+
+        // 使用XPath的ancestor轴来查找祖先节点下的控件元素
+        // 查找标签元素的祖先节点中的控件元素
+        const ancestorControlXPath = `${labelXPath}//ancestor::*[1]//*[${controlXPath.replace('//', '')}]`;
+        log(`[GetXPathByLabel] 在标签祖先节点下查找控件: ${ancestorControlXPath}`);
+
+        if (await this.elementExists(page, ancestorControlXPath, log)) {
+          const fullXPath = await this.getElementXPath(page, ancestorControlXPath, log);
+          if (fullXPath) {
+            log(`[GetXPathByLabel] 找到祖先节点下的控件XPath: ${fullXPath}`);
+            return { xpath: fullXPath, debugInfo };
+          }
+        }
+
+        // 也可以尝试查找更上层的祖先节点
+        const ancestorControlXPath2 = `${labelXPath}//ancestor::*[2]//*[${controlXPath.replace('//', '')}]`;
+        log(`[GetXPathByLabel] 在标签更上层祖先节点下查找控件: ${ancestorControlXPath2}`);
+
+        if (await this.elementExists(page, ancestorControlXPath2, log)) {
+          const fullXPath = await this.getElementXPath(page, ancestorControlXPath2, log);
+          if (fullXPath) {
+            log(`[GetXPathByLabel] 找到更上层祖先节点下的控件XPath: ${fullXPath}`);
+            return { xpath: fullXPath, debugInfo };
+          }
+        }
+      } catch (e) {
+        log(`[GetXPathByLabel] 查找标签祖先节点下的控件时出错: ${e}`);
+        // 继续尝试下一个标签XPath
+        continue;
+      }
+    }
+
+    // 6. 最后，直接查找包含标签文本的控件元素
+    log(`[GetXPathByLabel] 策略6: 直接查找包含标签文本的控件元素`);
     let directControlXPath = '';
     if (controlType) {
       // 如果指定了控件类型，构建更具体的XPath
