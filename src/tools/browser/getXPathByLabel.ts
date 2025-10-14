@@ -183,12 +183,12 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       let childXPath = '';
       if (controlType) {
         // 如果指定了控件类型，构建更具体的XPath
-        const controlSelectors = controlXPath.replace('//', '').split(' | ');
+        const controlSelectors = controlXPath.replace(/\/\//g, '').split(' | ');
         const conditions = controlSelectors.map(selector => `self::${selector.split('[')[0]}`).join(' or ');
         childXPath = `${labelXPath}//*[${conditions}]`;
       } else {
         // 如果未指定控件类型，使用原始的XPath
-        childXPath = `${labelXPath}//*[${controlXPath.replace('//', '').replace(' | ', ' | self::')}]`;
+        childXPath = `${labelXPath}//*[${controlXPath.replace(/\/\//g, '').replace(' | ', ' | self::')}]`;
       }
 
       log(`[GetXPathByLabel] 检查子元素XPath: ${childXPath}`);
@@ -216,7 +216,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
           log(`[GetXPathByLabel] 标签元素父路径: ${parentXPath}`);
 
           // 尝试查找父元素下的控件
-          const possibleControlXPath = `${parentXPath}//*[${controlXPath.replace('//', '')}]`;
+          const possibleControlXPath = `${parentXPath}//*[${controlXPath.replace(/\/\//g, '')}]`;
           log(`[GetXPathByLabel] 检查父元素下的控件: ${possibleControlXPath}`);
           if (await this.elementExists(page, possibleControlXPath, log)) {
             log(`[GetXPathByLabel] 父元素下的控件存在，返回定位XPath: ${possibleControlXPath}`);
@@ -241,7 +241,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
 
         // 使用XPath的ancestor轴来查找祖先节点下的控件元素
         // 查找标签元素的祖先节点中的控件元素
-        const ancestorControlXPath = `${labelXPath}//ancestor::*[1]//*[${controlXPath.replace('//', '')}]`;
+        const ancestorControlXPath = `${labelXPath}//ancestor::*[1]//*[${controlXPath.replace(/\/\//g, '')}]`;
         log(`[GetXPathByLabel] 在标签祖先节点下查找控件: ${ancestorControlXPath}`);
 
         if (await this.elementExists(page, ancestorControlXPath, log)) {
@@ -251,7 +251,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 也可以尝试查找更上层的祖先节点
-        const ancestorControlXPath2 = `${labelXPath}//ancestor::*[2]//*[${controlXPath.replace('//', '')}]`;
+        const ancestorControlXPath2 = `${labelXPath}//ancestor::*[2]//*[${controlXPath.replace(/\/\//g, '')}]`;
         log(`[GetXPathByLabel] 在标签更上层祖先节点下查找控件: ${ancestorControlXPath2}`);
 
         if (await this.elementExists(page, ancestorControlXPath2, log)) {
@@ -271,7 +271,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     let directControlXPath = '';
     if (controlType) {
       // 如果指定了控件类型，构建更具体的XPath
-      const controlSelectors = controlXPath.replace('//', '').split(' | ');
+      const controlSelectors = controlXPath.replace(/\/\//g, '').split(' | ');
       const conditions = controlSelectors.map(selector => {
         const tagName = selector.split('[')[0];
         return `self::${tagName}`;
@@ -279,7 +279,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       directControlXPath = `//*[contains(text(), '${label}') and (${conditions})]`;
     } else {
       // 如果未指定控件类型，使用原始的XPath
-      directControlXPath = `//*[contains(text(), '${label}') and (${controlXPath.replace('//', '')})]`;
+      directControlXPath = `//*[contains(text(), '${label}') and (${controlXPath.replace(/\/\//g, '')})]`;
     }
 
     log(`[GetXPathByLabel] 检查直接查找的XPath: ${directControlXPath}`);
