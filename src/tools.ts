@@ -244,6 +244,7 @@ export function createToolDefinitions() {
         required: [],
       },
     },
+    /*
     {
       name: "playwright_get",
       description: "Perform an HTTP GET request",
@@ -264,8 +265,8 @@ export function createToolDefinitions() {
           url: { type: "string", description: "URL to perform POST operation" },
           value: { type: "string", description: "Data to post in the body" },
           token: { type: "string", description: "Bearer token for authorization" },
-          headers: { 
-            type: "object", 
+          headers: {
+            type: "object",
             description: "Additional headers to include in the request",
             additionalProperties: { type: "string" }
           }
@@ -308,6 +309,7 @@ export function createToolDefinitions() {
         required: ["url"],
       },
     },
+*/
     {
       name: "playwright_expect_response",
       description: "Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.",
@@ -462,6 +464,7 @@ export function createToolDefinitions() {
         required: ["selector"]
       },
     },
+    /*
     {
       name: "playwright_read_generated_code",
       description: "读取gencode保存的ts代码并返回内容",
@@ -473,6 +476,7 @@ export function createToolDefinitions() {
         required: ["sessionId"]
       }
     },
+*/
     {
       name: "playwright_connect_over_cdp",
       description: "通过CDP端点接管已打开的浏览器（如 http://localhost:9222）",
@@ -528,6 +532,7 @@ export const BROWSER_TOOLS = [
 ];
 
 // API Request tools for conditional launch
+/*
 export const API_TOOLS = [
   "playwright_get",
   "playwright_post",
@@ -535,6 +540,8 @@ export const API_TOOLS = [
   "playwright_delete",
   "playwright_patch"
 ];
+*/
+export const API_TOOLS = [];
 
 // Codegen tools
 /*
@@ -544,6 +551,15 @@ export const CODEGEN_TOOLS = [
   'get_codegen_session',
   'clear_codegen_session',
   'playwright_read_generated_code'
+];
+*/
+// Codegen tools (excluding playwright_read_generated_code)
+/*
+export const CODEGEN_TOOLS = [
+  'start_codegen_session',
+  'end_codegen_session',
+  'get_codegen_session',
+  'clear_codegen_session'
 ];
 */
 

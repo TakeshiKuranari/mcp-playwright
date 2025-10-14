@@ -418,11 +418,13 @@ function initializeTools(server: any) {
   if (!saveStorageStateTool) saveStorageStateTool = new SaveStorageStateTool(server);
   
   // API tools
+  /*
   if (!getRequestTool) getRequestTool = new GetRequestTool(server);
   if (!postRequestTool) postRequestTool = new PostRequestTool(server);
   if (!putRequestTool) putRequestTool = new PutRequestTool(server);
   if (!patchRequestTool) patchRequestTool = new PatchRequestTool(server);
   if (!deleteRequestTool) deleteRequestTool = new DeleteRequestTool(server);
+  */
 
   // Initialize new tools
   if (!goBackTool) goBackTool = new GoBackTool(server);
@@ -620,20 +622,22 @@ export async function handleToolCall(
         return await saveStorageStateTool.execute(args, context);
         
       // API tools
+      /*
       case "playwright_get":
         return await getRequestTool.execute(args, context);
-        
+
       case "playwright_post":
         return await postRequestTool.execute(args, context);
-        
+
       case "playwright_put":
         return await putRequestTool.execute(args, context);
-        
+
       case "playwright_patch":
         return await patchRequestTool.execute(args, context);
-        
+
       case "playwright_delete":
         return await deleteRequestTool.execute(args, context);
+      */
       
       // New tools
       case "playwright_go_back":
