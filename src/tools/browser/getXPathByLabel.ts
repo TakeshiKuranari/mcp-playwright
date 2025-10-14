@@ -6,6 +6,9 @@ import { createErrorResponse, ToolResponse } from '../common/types.js';
 /**
  * GetXPathByLabelTool - 根据字段标签获取控件XPath的工具
  */
+// 超时时间常量（毫秒）
+const TIMEOUT_MS = 300;
+
 export class GetXPathByLabelTool extends BrowserToolBase {
   constructor(server: any) {
     super(server);
@@ -38,7 +41,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         return {
           content: [{
             type: "text",
-            text: `未能找到标签为 "${label}" 的控件`,
+            text: `未能找到标签为 【${label}】 的控件（xpath: ${xpath}）`,
           }],
           isError: false,
         };
@@ -62,6 +65,8 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * @returns 控件的XPath或null
    */
   private async getXPathByLabel(page: Page, label: string, controlType?: string): Promise<string | null> {
+    console.log(`[GetXPathByLabel] 开始查找标签 "${label}" 的控件XPath，控件类型: ${controlType || '未指定'}`);
+
     // 构建XPath查询表达式
     let xpathExpression = '';
 
@@ -96,14 +101,27 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         break;
     }
 
+    console.log(`[GetXPathByLabel] 构建的控件XPath表达式: ${controlXPath}`);
+
     // 尝试不同的查找策略
     // 1. 查找与标签关联的控件 (通过for属性和id属性关联)
+    console.log(`[GetXPathByLabel] 策略1: 查找与标签关联的控件 (通过for属性和id属性关联)`);
     const forAttributeXPath = `${labelXPaths[0]}/@for`;
     try {
-      const forId = await page.locator(forAttributeXPath).first().getAttribute('for');
+      console.log(`[GetXPathByLabel] 等待标签元素出现并获取for属性: ${forAttributeXPath}`);
+      // 先等待元素出现，设置超时
+      await page.waitForSelector(`xpath=${labelXPaths[0]}`, { timeout: TIMEOUT_MS });
+      // 然后获取for属性，增加超时保护
+      const forId = await Promise.race([
+        page.locator(forAttributeXPath).first().getAttribute('for'),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), TIMEOUT_MS))
+      ]);
+      console.log(`[GetXPathByLabel] 获取到的for属性值: ${forId}`);
       if (forId) {
         const elementXPath = `//*[@id='${forId}']`;
+        console.log(`[GetXPathByLabel] 检查元素是否存在: ${elementXPath}`);
         if (await this.elementExists(page, elementXPath)) {
+          console.log(`[GetXPathByLabel] 找到元素XPath: ${elementXPath}`);
           return elementXPath;
         }
       }
@@ -113,52 +131,118 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     }
 
     // 2. 查找标签后的兄弟元素中的控件
+    console.log(`[GetXPathByLabel] 策略2: 查找标签后的兄弟元素中的控件`);
     for (const labelXPath of labelXPaths) {
-      const siblingXPath = `${labelXPath}/following-sibling::*[1]${controlType ? `[self::${controlXPath.split(' | ')[0].replace('//', '').split('[')[0]}]` : ''}`;
+      // 构建更准确的兄弟元素XPath
+      let siblingXPath = '';
+      if (controlType) {
+        // 如果指定了控件类型，构建更具体的XPath
+        const controlTag = controlXPath.split(' | ')[0].replace('//', '').split('[')[0];
+        siblingXPath = `${labelXPath}/following-sibling::*[1][self::${controlTag}]`;
+      } else {
+        // 如果未指定控件类型，使用通用的XPath
+        siblingXPath = `${labelXPath}/following-sibling::*[1]`;
+      }
+
+      console.log(`[GetXPathByLabel] 检查兄弟元素XPath: ${siblingXPath}`);
       if (await this.elementExists(page, siblingXPath)) {
+        console.log(`[GetXPathByLabel] 兄弟元素存在，获取完整XPath: ${siblingXPath}`);
         const fullXPath = await this.getElementXPath(page, siblingXPath);
-        if (fullXPath) return fullXPath;
-      }
-    }
-
-    // 3. 查找标签内的子元素中的控件
-    for (const labelXPath of labelXPaths) {
-      const childXPath = `${labelXPath}//*[${controlXPath.replace('//', '').replace(' | ', ' | self::')}]`;
-      if (await this.elementExists(page, childXPath)) {
-        const fullXPath = await this.getElementXPath(page, childXPath);
-        if (fullXPath) return fullXPath;
-      }
-    }
-
-    // 4. 查找标签附近的控件 (使用CSS选择器查找相邻元素)
-    for (const labelXPath of labelXPaths) {
-      // 查找标签元素
-      const labelElement = page.locator(labelXPath).first();
-      if (await labelElement.count() > 0) {
-        // 尝试获取标签元素的XPath
-        const labelElementXPath = await this.getElementXPath(page, labelXPath);
-        if (labelElementXPath) {
-          // 查找标签后的控件元素
-          const parentXPath = labelElementXPath.substring(0, labelElementXPath.lastIndexOf('/'));
-          const index = labelElementXPath.substring(labelElementXPath.lastIndexOf('/') + 1);
-
-          // 尝试查找父元素下的控件
-          const possibleControlXPath = `${parentXPath}/*[${controlXPath.replace('//', '')}]`;
-          if (await this.elementExists(page, possibleControlXPath)) {
-            const fullXPath = await this.getElementXPath(page, possibleControlXPath);
-            if (fullXPath) return fullXPath;
-          }
+        if (fullXPath) {
+          console.log(`[GetXPathByLabel] 找到兄弟元素XPath: ${fullXPath}`);
+          return fullXPath;
         }
       }
     }
 
-    // 5. 最后，直接查找包含标签文本的控件元素
-    const directControlXPath = `//*[contains(text(), '${label}') and (${controlXPath.replace('//', '')})]`;
-    if (await this.elementExists(page, directControlXPath)) {
-      const fullXPath = await this.getElementXPath(page, directControlXPath);
-      if (fullXPath) return fullXPath;
+    // 3. 查找标签内的子元素中的控件
+    console.log(`[GetXPathByLabel] 策略3: 查找标签内的子元素中的控件`);
+    for (const labelXPath of labelXPaths) {
+      // 构建更准确的子元素XPath
+      let childXPath = '';
+      if (controlType) {
+        // 如果指定了控件类型，构建更具体的XPath
+        const controlSelectors = controlXPath.replace('//', '').split(' | ');
+        const conditions = controlSelectors.map(selector => `self::${selector.split('[')[0]}`).join(' or ');
+        childXPath = `${labelXPath}//*[${conditions}]`;
+      } else {
+        // 如果未指定控件类型，使用原始的XPath
+        childXPath = `${labelXPath}//*[${controlXPath.replace('//', '').replace(' | ', ' | self::')}]`;
+      }
+
+      console.log(`[GetXPathByLabel] 检查子元素XPath: ${childXPath}`);
+      if (await this.elementExists(page, childXPath)) {
+        console.log(`[GetXPathByLabel] 子元素存在，获取完整XPath: ${childXPath}`);
+        const fullXPath = await this.getElementXPath(page, childXPath);
+        if (fullXPath) {
+          console.log(`[GetXPathByLabel] 找到子元素XPath: ${fullXPath}`);
+          return fullXPath;
+        }
+      }
     }
 
+    // 4. 查找标签附近的控件 (使用CSS选择器查找相邻元素)
+    console.log(`[GetXPathByLabel] 策略4: 查找标签附近的控件 (使用CSS选择器查找相邻元素)`);
+    for (const labelXPath of labelXPaths) {
+      // 查找标签元素
+      try {
+        console.log(`[GetXPathByLabel] 等待标签元素出现: ${labelXPath}`);
+        await page.waitForSelector(`xpath=${labelXPath}`, { timeout: TIMEOUT_MS });
+        console.log(`[GetXPathByLabel] 标签元素已找到: ${labelXPath}`);
+        // 尝试获取标签元素的XPath
+        const labelElementXPath = await this.getElementXPath(page, labelXPath);
+        console.log(`[GetXPathByLabel] 获取到标签元素XPath: ${labelElementXPath}`);
+        if (labelElementXPath) {
+          // 查找标签后的控件元素
+          const parentXPath = labelElementXPath.substring(0, labelElementXPath.lastIndexOf('/'));
+          console.log(`[GetXPathByLabel] 标签元素父路径: ${parentXPath}`);
+
+          // 尝试查找父元素下的控件
+          const possibleControlXPath = `${parentXPath}//*[${controlXPath.replace('//', '')}]`;
+          console.log(`[GetXPathByLabel] 检查父元素下的控件: ${possibleControlXPath}`);
+          if (await this.elementExists(page, possibleControlXPath)) {
+            console.log(`[GetXPathByLabel] 父元素下的控件存在，获取完整XPath: ${possibleControlXPath}`);
+            const fullXPath = await this.getElementXPath(page, possibleControlXPath);
+            if (fullXPath) {
+              console.log(`[GetXPathByLabel] 找到父元素下的控件XPath: ${fullXPath}`);
+              return fullXPath;
+            }
+          }
+        }
+      } catch (e) {
+        console.log(`[GetXPathByLabel] 未找到标签元素: ${labelXPath}，继续尝试下一个XPath`);
+        // 如果找不到标签元素，继续尝试下一个XPath
+        continue;
+      }
+    }
+
+    // 5. 最后，直接查找包含标签文本的控件元素
+    console.log(`[GetXPathByLabel] 策略5: 直接查找包含标签文本的控件元素`);
+    let directControlXPath = '';
+    if (controlType) {
+      // 如果指定了控件类型，构建更具体的XPath
+      const controlSelectors = controlXPath.replace('//', '').split(' | ');
+      const conditions = controlSelectors.map(selector => {
+        const tagName = selector.split('[')[0];
+        return `self::${tagName}`;
+      }).join(' or ');
+      directControlXPath = `//*[contains(text(), '${label}') and (${conditions})]`;
+    } else {
+      // 如果未指定控件类型，使用原始的XPath
+      directControlXPath = `//*[contains(text(), '${label}') and (${controlXPath.replace('//', '')})]`;
+    }
+
+    console.log(`[GetXPathByLabel] 检查直接查找的XPath: ${directControlXPath}`);
+    if (await this.elementExists(page, directControlXPath)) {
+      console.log(`[GetXPathByLabel] 直接查找的元素存在，获取完整XPath: ${directControlXPath}`);
+      const fullXPath = await this.getElementXPath(page, directControlXPath);
+      if (fullXPath) {
+        console.log(`[GetXPathByLabel] 找到直接查找的元素XPath: ${fullXPath}`);
+        return fullXPath;
+      }
+    }
+
+    console.log(`[GetXPathByLabel] 未能找到标签 "${label}" 的控件XPath`);
     return null;
   }
 
@@ -170,9 +254,14 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    */
   private async elementExists(page: Page, xpath: string): Promise<boolean> {
     try {
-      const element = page.locator(`xpath=${xpath}`);
-      return await element.count() > 0;
+      console.log(`[elementExists] 检查元素是否存在: ${xpath}`);
+      // 使用waitForSelector来设置超时
+      await page.waitForSelector(`xpath=${xpath}`, { timeout: TIMEOUT_MS });
+      console.log(`[elementExists] 元素存在: ${xpath}`);
+      return true;
     } catch (e) {
+      console.log(`[elementExists] 元素不存在或超时: ${xpath}`);
+      // 捕获超时或其他错误，但不抛出异常
       return false;
     }
   }
@@ -185,8 +274,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    */
   private async getElementXPath(page: Page, xpath: string): Promise<string | null> {
     try {
+      console.log(`[getElementXPath] 获取元素的完整XPath: ${xpath}`);
       // 使用JavaScript函数获取元素的XPath
-      const fullXPath = await page.evaluate((xpath) => {
+      const fullXPath = await page.waitForFunction((xpath) => {
         const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
         if (!element) return null;
 
@@ -216,10 +306,13 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         };
 
         return getPathTo(element);
-      }, xpath);
+      }, xpath, { timeout: TIMEOUT_MS });
 
-      return fullXPath;
+      console.log(`[getElementXPath] 获取到的完整XPath: ${fullXPath}`);
+      return fullXPath as any;
     } catch (e) {
+      console.log(`[getElementXPath] 获取元素XPath时出错: ${e}`);
+      // 捕获超时或其他错误，但不抛出异常
       return null;
     }
   }
