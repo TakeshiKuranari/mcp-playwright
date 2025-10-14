@@ -4,12 +4,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BROWSER_TOOLS, API_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
 import { ActionRecorder } from './tools/codegen/recorder.js';
-import { 
-  startCodegenSession,
-  endCodegenSession,
-  getCodegenSession,
-  clearCodegenSession,
-  readGeneratedTestCode
+import {
+  // startCodegenSession,
+  // endCodegenSession,
+  // getCodegenSession,
+  // clearCodegenSession,
+  // readGeneratedTestCode
 } from './tools/codegen/index.js';
 import { 
   ScreenshotTool,
@@ -449,6 +449,7 @@ export async function handleToolCall(
   try {
     // Handle codegen tools
     switch (name) {
+      /*
       case 'start_codegen_session':
         return await handleCodegenResult(startCodegenSession.handler(args));
       case 'end_codegen_session':
@@ -459,6 +460,7 @@ export async function handleToolCall(
         return await handleCodegenResult(clearCodegenSession.handler(args));
       case 'playwright_read_generated_code':
         return await handleCodegenResult(readGeneratedTestCode.handler(args));
+      */
       case 'playwright_connect_over_cdp':
         return await connectOverCDPTool.execute(args);
     }

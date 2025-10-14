@@ -4,6 +4,7 @@ import { codegenTools } from './tools/codegen';
 export function createToolDefinitions() {
   return [
     // Codegen tools
+    /*
     {
       name: "start_codegen_session",
       description: "Start a new code generation session to record Playwright actions",
@@ -14,17 +15,17 @@ export function createToolDefinitions() {
             type: "object",
             description: "Code generation options",
             properties: {
-              outputPath: { 
-                type: "string", 
-                description: "Directory path where generated tests will be saved (use absolute path)" 
+              outputPath: {
+                type: "string",
+                description: "Directory path where generated tests will be saved (use absolute path)"
               },
-              testNamePrefix: { 
-                type: "string", 
-                description: "Prefix to use for generated test names (default: 'GeneratedTest')" 
+              testNamePrefix: {
+                type: "string",
+                description: "Prefix to use for generated test names (default: 'GeneratedTest')"
               },
-              includeComments: { 
-                type: "boolean", 
-                description: "Whether to include descriptive comments in generated tests" 
+              includeComments: {
+                type: "boolean",
+                description: "Whether to include descriptive comments in generated tests"
               }
             },
             required: ["outputPath"]
@@ -39,9 +40,9 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to end" 
+          sessionId: {
+            type: "string",
+            description: "ID of the session to end"
           }
         },
         required: ["sessionId"]
@@ -53,9 +54,9 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to retrieve" 
+          sessionId: {
+            type: "string",
+            description: "ID of the session to retrieve"
           }
         },
         required: ["sessionId"]
@@ -67,14 +68,15 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to clear" 
+          sessionId: {
+            type: "string",
+            description: "ID of the session to clear"
           }
         },
         required: ["sessionId"]
       }
     },
+    */
     {
       name: "playwright_navigate",
       description: "Navigate to a URL",
@@ -535,6 +537,7 @@ export const API_TOOLS = [
 ];
 
 // Codegen tools
+/*
 export const CODEGEN_TOOLS = [
   'start_codegen_session',
   'end_codegen_session',
@@ -542,10 +545,11 @@ export const CODEGEN_TOOLS = [
   'clear_codegen_session',
   'playwright_read_generated_code'
 ];
+*/
 
 // All available tools
 export const tools = [
   ...BROWSER_TOOLS,
   ...API_TOOLS,
-  ...CODEGEN_TOOLS
+  // ...CODEGEN_TOOLS  // Codegen tools disabled
 ];
