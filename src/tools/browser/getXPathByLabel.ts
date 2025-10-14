@@ -94,13 +94,13 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     // 标准标签元素的XPath表达式
     const labelXPaths = [
       `//label[contains(text(), '${label}')]`,
-      `//span[contains(text(), '${label}')]`,
-      `//div[contains(text(), '${label}')]`,
-      `//*[contains(@label, '${label}')]`,
-      `//*[contains(@placeholder, '${label}')]`,
-      `//*[contains(@aria-label, '${label}')]`,
-      `//*[contains(@title, '${label}')]`,
       `//*[contains(text(), '${label}')]`,
+      // `//span[contains(text(), '${label}')]`,
+      // `//div[contains(text(), '${label}')]`,
+      // `//*[contains(@label, '${label}')]`,
+      // `//*[contains(@placeholder, '${label}')]`,
+      // `//*[contains(@aria-label, '${label}')]`,
+      // `//*[contains(@title, '${label}')]`,
     ];
 
     // 根据控件类型构建关联控件的XPath表达式
@@ -143,7 +143,8 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         const elementXPath = `//*[@id='${forId}']`;
         log(`[GetXPathByLabel] 检查元素是否存在: ${elementXPath}`);
         if (await this.elementExists(page, elementXPath, log)) {
-          log(`[GetXPathByLabel] 找到元素XPath: ${elementXPath}`);
+          log(`[GetXPathByLabel] 找到元素XPath，返回定位XPath: ${elementXPath}`);
+          // 直接返回定位XPath
           return { xpath: elementXPath, debugInfo };
         }
       }
@@ -160,7 +161,8 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       if (controlType) {
         // 如果指定了控件类型，构建更具体的XPath
         const controlTag = controlXPath.split(' | ')[0].replace('//', '').split('[')[0];
-        siblingXPath = `${labelXPath}/following-sibling::*[1][self::${controlTag}]`;
+        // siblingXPath = `${labelXPath}/following-sibling::*[1][self::${controlTag}]`;
+        siblingXPath = `${labelXPath}/following-sibling::*[1]/${controlTag}`;
       } else {
         // 如果未指定控件类型，使用通用的XPath
         siblingXPath = `${labelXPath}/following-sibling::*[1]`;
@@ -168,12 +170,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
 
       log(`[GetXPathByLabel] 检查兄弟元素XPath: ${siblingXPath}`);
       if (await this.elementExists(page, siblingXPath, log)) {
-        log(`[GetXPathByLabel] 兄弟元素存在，获取完整XPath: ${siblingXPath}`);
-        const fullXPath = await this.getElementXPath(page, siblingXPath, log);
-        if (fullXPath) {
-          log(`[GetXPathByLabel] 找到兄弟元素XPath: ${fullXPath}`);
-          return { xpath: fullXPath, debugInfo };
-        }
+        log(`[GetXPathByLabel] 兄弟元素存在，返回定位XPath: ${siblingXPath}`);
+        // 直接返回定位XPath，而不是获取完整XPath
+        return { xpath: siblingXPath, debugInfo };
       }
     }
 
@@ -194,12 +193,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
 
       log(`[GetXPathByLabel] 检查子元素XPath: ${childXPath}`);
       if (await this.elementExists(page, childXPath, log)) {
-        log(`[GetXPathByLabel] 子元素存在，获取完整XPath: ${childXPath}`);
-        const fullXPath = await this.getElementXPath(page, childXPath, log);
-        if (fullXPath) {
-          log(`[GetXPathByLabel] 找到子元素XPath: ${fullXPath}`);
-          return { xpath: fullXPath, debugInfo };
-        }
+        log(`[GetXPathByLabel] 子元素存在，返回定位XPath: ${childXPath}`);
+        // 直接返回定位XPath，而不是获取完整XPath
+        return { xpath: childXPath, debugInfo };
       }
     }
 
@@ -223,12 +219,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
           const possibleControlXPath = `${parentXPath}//*[${controlXPath.replace('//', '')}]`;
           log(`[GetXPathByLabel] 检查父元素下的控件: ${possibleControlXPath}`);
           if (await this.elementExists(page, possibleControlXPath, log)) {
-            log(`[GetXPathByLabel] 父元素下的控件存在，获取完整XPath: ${possibleControlXPath}`);
-            const fullXPath = await this.getElementXPath(page, possibleControlXPath, log);
-            if (fullXPath) {
-              log(`[GetXPathByLabel] 找到父元素下的控件XPath: ${fullXPath}`);
-              return { xpath: fullXPath, debugInfo };
-            }
+            log(`[GetXPathByLabel] 父元素下的控件存在，返回定位XPath: ${possibleControlXPath}`);
+            // 直接返回定位XPath，而不是获取完整XPath
+            return { xpath: possibleControlXPath, debugInfo };
           }
         }
       } catch (e) {
@@ -252,11 +245,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         log(`[GetXPathByLabel] 在标签祖先节点下查找控件: ${ancestorControlXPath}`);
 
         if (await this.elementExists(page, ancestorControlXPath, log)) {
-          const fullXPath = await this.getElementXPath(page, ancestorControlXPath, log);
-          if (fullXPath) {
-            log(`[GetXPathByLabel] 找到祖先节点下的控件XPath: ${fullXPath}`);
-            return { xpath: fullXPath, debugInfo };
-          }
+          log(`[GetXPathByLabel] 找到祖先节点下的控件XPath，返回定位XPath: ${ancestorControlXPath}`);
+          // 直接返回定位XPath，而不是获取完整XPath
+          return { xpath: ancestorControlXPath, debugInfo };
         }
 
         // 也可以尝试查找更上层的祖先节点
@@ -264,11 +255,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         log(`[GetXPathByLabel] 在标签更上层祖先节点下查找控件: ${ancestorControlXPath2}`);
 
         if (await this.elementExists(page, ancestorControlXPath2, log)) {
-          const fullXPath = await this.getElementXPath(page, ancestorControlXPath2, log);
-          if (fullXPath) {
-            log(`[GetXPathByLabel] 找到更上层祖先节点下的控件XPath: ${fullXPath}`);
-            return { xpath: fullXPath, debugInfo };
-          }
+          log(`[GetXPathByLabel] 找到更上层祖先节点下的控件XPath，返回定位XPath: ${ancestorControlXPath2}`);
+          // 直接返回定位XPath，而不是获取完整XPath
+          return { xpath: ancestorControlXPath2, debugInfo };
         }
       } catch (e) {
         log(`[GetXPathByLabel] 查找标签祖先节点下的控件时出错: ${e}`);
@@ -295,12 +284,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
 
     log(`[GetXPathByLabel] 检查直接查找的XPath: ${directControlXPath}`);
     if (await this.elementExists(page, directControlXPath, log)) {
-      log(`[GetXPathByLabel] 直接查找的元素存在，获取完整XPath: ${directControlXPath}`);
-      const fullXPath = await this.getElementXPath(page, directControlXPath, log);
-      if (fullXPath) {
-        log(`[GetXPathByLabel] 找到直接查找的元素XPath: ${fullXPath}`);
-        return { xpath: fullXPath, debugInfo };
-      }
+      log(`[GetXPathByLabel] 直接查找的元素存在，返回定位XPath: ${directControlXPath}`);
+      // 直接返回定位XPath，而不是获取完整XPath
+      return { xpath: directControlXPath, debugInfo };
     }
 
     log(`[GetXPathByLabel] 未能找到标签 "${label}" 的控件XPath`);
