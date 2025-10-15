@@ -7,7 +7,7 @@ import { createErrorResponse, ToolResponse } from '../common/types.js';
  * GetXPathByLabelTool - 根据字段标签获取控件XPath的工具
  */
 // 超时时间常量（毫秒）
-const TIMEOUT_MS = 300;
+const TIMEOUT_MS = 200;
 
 export class GetXPathByLabelTool extends BrowserToolBase {
   constructor(server: any) {
@@ -113,15 +113,19 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     controlType: string | undefined,
     strategies: Array<(page: Page, label: string, controlType?: string) => Promise<{ xpath: string | null; debugInfo: string }>>
   ): Promise<{ xpath: string | null; debugInfo: string }> {
+    let combinedDebugInfo = '';
+
     // 执行策略
     for (const strategy of strategies) {
       const result = await strategy(page, label, controlType);
+      // 收集调试信息
+      combinedDebugInfo += result.debugInfo + '\n';
       if (result.xpath) {
-        return result;
+        return { xpath: result.xpath, debugInfo: combinedDebugInfo };
       }
     }
 
-    return { xpath: null, debugInfo: '未能找到标签对应的控件' };
+    return { xpath: null, debugInfo: combinedDebugInfo + '未能找到标签对应的控件' };
   }
 
   /**
@@ -149,6 +153,10 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    */
   private getLabelXPaths(label: string): string[] {
     return [
+      // 优先全匹配
+      `//label[text()='${label}']`,
+      `//*[text()='${label}']`,
+      // 再模糊匹配
       `//label[contains(text(), '${label}')]`,
       `//*[contains(text(), '${label}')]`,
     ];
