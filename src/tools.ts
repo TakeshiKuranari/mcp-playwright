@@ -503,8 +503,8 @@ export function createToolDefinitions() {
           },
           controlType: {
             type: "string",
-            description: "控件类型(可选,如:输入框, 下拉框, 复选框, 单选按钮等)",
-            enum: ["输入框", "下拉框", "复选框", "单选按钮"]
+            description: "控件类型(可选,如:输入框, 下拉框, 复选框, 单选按钮, 按钮等)",
+            enum: ["输入框", "下拉框", "复选框", "单选按钮", "按钮"]
           }
         },
         required: ["label"]

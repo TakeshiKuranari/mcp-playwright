@@ -143,6 +143,8 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         return "//input[@type='checkbox']";
       case '单选按钮':
         return "//input[@type='radio']";
+      case '按钮':
+        return "//button | //*[@role='button']";
       default:
         return "//input | //textarea | //select | //button | //*[@role='button'] | //*[@role='combobox']";
     }
