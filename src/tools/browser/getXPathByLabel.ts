@@ -88,8 +88,8 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       this.findBySiblingElement.bind(this),
       // 策略3: 查找标签内的子元素中的控件：在大多数表单结构中会失败，因为输入框通常不在 label 内部。
       // this.findByChildElement.bind(this),
-      // 策略4: 查找标签附近的控件 (使用CSS选择器查找相邻元素)
-      this.findByNearbyElement.bind(this),
+      // 策略4: 查找标签附近的控件 (使用CSS选择器查找相邻元素)：好像不太好用
+      // this.findByNearbyElement.bind(this),
       // 策略5: 查找标签祖先节点下的控件元素
       this.findByAncestorElement.bind(this),
       // 策略6: 直接查找包含标签文本的控件元素
@@ -144,7 +144,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       case '单选按钮':
         return "//input[@type='radio']";
       case '按钮':
-        return "//button | //*[@role='button']";
+        return "//a | //button | //*[@role='button']";
       default:
         return "//input | //textarea | //select | //button | //*[@role='button'] | //*[@role='combobox']";
     }
