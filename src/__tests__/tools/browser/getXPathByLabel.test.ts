@@ -2,8 +2,6 @@ import { GetXPathByLabelTool } from '../../../tools/browser/getXPathByLabel';
 import type { ToolContext } from '../../../tools/common/types';
 import type { Page, Locator } from 'playwright';
 
-// Mock the base class and Playwright
-jest.mock('../../../tools/browser/base');
 
 describe('GetXPathByLabelTool', () => {
   let tool: GetXPathByLabelTool;
@@ -20,13 +18,20 @@ describe('GetXPathByLabelTool', () => {
     // Create mock page
     mockPage = {
       waitForSelector: jest.fn(),
-      locator: jest.fn(),
+      locator: jest.fn().mockReturnValue({
+        first: () => ({
+          getAttribute: jest.fn().mockResolvedValue(null),
+        }),
+      }),
+      waitForFunction: jest.fn(),
+      isClosed: jest.fn().mockReturnValue(false),
     } as unknown as Page;
 
     // Create mock context
     mockContext = {
       browser: {
         pages: jest.fn().mockResolvedValue([mockPage]),
+        isConnected: jest.fn().mockReturnValue(true),
       },
       page: mockPage,
       server: mockServer,
@@ -41,7 +46,12 @@ describe('GetXPathByLabelTool', () => {
 
   test('should return error when no XPath is found', async () => {
     // Mock waitForSelector to throw an error (element not found)
-    (mockPage.waitForSelector as jest.Mock).mockImplementation(() => {
+    (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
+      // For label elements, throw an error to simulate not found
+      if (selector.includes('label') || selector.includes('Label') || selector.includes('Address')) {
+        throw new Error('Element not found');
+      }
+      // For other elements, also throw an error
       throw new Error('Element not found');
     });
 
@@ -57,10 +67,12 @@ describe('GetXPathByLabelTool', () => {
     };
 
     (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
-      if (selector.includes('Address')) {
+      // For label elements, return a mock element handle
+      if (selector.includes('label') || selector.includes('Label') || selector.includes('Address')) {
         return Promise.resolve(mockElementHandle);
       }
-      throw new Error('Element not found');
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
     });
 
     const result = await tool.execute({ label: 'Address' }, mockContext);
@@ -79,10 +91,12 @@ describe('GetXPathByLabelTool', () => {
     };
 
     (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
-      if (selector.includes('Name')) {
+      // For label elements, return a mock element handle
+      if (selector.includes('label') || selector.includes('Label') || selector.includes('Name')) {
         return Promise.resolve(mockElementHandle);
       }
-      throw new Error('Element not found');
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
     });
 
     // Test with input control type

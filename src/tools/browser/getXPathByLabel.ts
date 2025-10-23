@@ -148,8 +148,8 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       case '单选按钮':
         return "self::input[@type='radio' and not(contains(@style, 'display: none'))]";
       case '按钮':
-        // 增强按钮识别，避免依赖易变的class属性
-        return "self::button[not(contains(@style, 'display: none'))] | self::input[@type='button' or @type='submit' or @type='reset'] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::a[@href and not(contains(@style, 'display: none'))]";
+        // 更严格的按钮匹配，只匹配真正的按钮元素，不匹配按钮样式的链接
+        return "self::button[not(contains(@style, 'display: none'))] | self::input[@type='button' or @type='submit' or @type='reset'] | self::*[@role='button' and not(contains(@style, 'display: none'))]";
       default:
         // 默认情况下，返回更稳定的控件表达式
         return "self::input[not(@type='hidden') and not(contains(@style, 'display: none'))] | self::textarea[not(contains(@style, 'display: none'))] | self::select[not(contains(@style, 'display: none'))] | self::button[not(contains(@style, 'display: none'))] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::*[@role='combobox' and not(contains(@style, 'display: none'))]";
