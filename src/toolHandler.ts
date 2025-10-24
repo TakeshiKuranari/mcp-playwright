@@ -11,7 +11,7 @@ import {
   // clearCodegenSession,
   // readGeneratedTestCode
 } from './tools/codegen/index.js';
-import { 
+import {
   ScreenshotTool,
   NavigationTool,
   CloseBrowserTool,
@@ -32,9 +32,9 @@ import {
   GetTextTool,
   UploadFileTool
 } from './tools/browser/interaction.js';
-import { 
-  VisibleTextTool, 
-  VisibleHtmlTool 
+import {
+  VisibleTextTool,
+  VisibleHtmlTool
 } from './tools/browser/visiblePage.js';
 import {
   GetRequestTool,
@@ -49,6 +49,7 @@ import { SaveAsPdfTool } from './tools/browser/output.js';
 import { ClickAndSwitchTabTool } from './tools/browser/interaction.js';
 import { ConnectOverCDPTool } from './tools/browser/connectOverCDP.js';
 import { GetXPathByLabelTool } from './tools/browser/getXPathByLabel.js';
+import { GetTableByHeaderKeywordTool } from './tools/browser/getTableByHeaderKeyword.js';
 
 // Global state
 let browser: Browser | undefined;
@@ -109,6 +110,7 @@ let getTextTool: GetTextTool;
 let connectOverCDPTool: ConnectOverCDPTool;
 let saveStorageStateTool: SaveStorageStateTool;
 let getXPathByLabelTool: GetXPathByLabelTool;
+let getTableByHeaderKeywordTool: GetTableByHeaderKeywordTool;
 
 interface BrowserSettings {
   viewport?: {
@@ -438,6 +440,7 @@ function initializeTools(server: any) {
   if (!getTextTool) getTextTool = new GetTextTool(server);
   if (!connectOverCDPTool) connectOverCDPTool = new ConnectOverCDPTool(server);
   if (!getXPathByLabelTool) getXPathByLabelTool = new GetXPathByLabelTool(server);
+  if (!getTableByHeaderKeywordTool) getTableByHeaderKeywordTool = new GetTableByHeaderKeywordTool(server);
 }
 
 /**
@@ -660,7 +663,10 @@ export async function handleToolCall(
 
       case "playwright_get_xpath_by_label":
         return await getXPathByLabelTool.execute(args, context);
-      
+
+      case "playwright_get_table_by_header_keyword":
+        return await getTableByHeaderKeywordTool.execute(args, context);
+
       default:
         return {
           content: [{

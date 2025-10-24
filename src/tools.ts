@@ -511,6 +511,20 @@ export function createToolDefinitions() {
       }
     },
     {
+      name: "playwright_get_table_by_header_keyword",
+      description: "根据表单第一行关键词获取表格顶层元素及XPath",
+      inputSchema: {
+        type: "object",
+        properties: {
+          keyword: {
+            type: "string",
+            description: "表格第一行中的关键词"
+          }
+        },
+        required: ["keyword"]
+      }
+    },
+    {
       name: "playwright_save_storage_state",
       description: "保存当前浏览器登录状态到指定文件",
       inputSchema: {
@@ -550,7 +564,8 @@ export const BROWSER_TOOLS = [
   "playwright_click_and_switch_tab",
   "playwright_get_text",
   "playwright_save_storage_state",
-  "playwright_get_xpath_by_label"
+  "playwright_get_xpath_by_label",
+  "playwright_get_table_by_header_keyword"
 ];
 
 // API Request tools for conditional launch
