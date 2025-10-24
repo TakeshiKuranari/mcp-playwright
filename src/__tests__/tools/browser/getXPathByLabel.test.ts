@@ -109,4 +109,56 @@ describe('GetXPathByLabelTool', () => {
     const response = JSON.parse(result.content[0].text as string);
     expect(response).toHaveProperty('xpath');
   });
+
+  test('should find element by placeholder attribute', async () => {
+    // Mock waitForSelector to resolve successfully for placeholder
+    const mockElementHandle: any = {
+      evaluate: jest.fn().mockResolvedValue('<input type="text" id="email" placeholder="请输入邮箱地址">'),
+    };
+
+    (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
+      // For placeholder elements, return a mock element handle
+      if (selector.includes('placeholder') || selector.includes('邮箱')) {
+        return Promise.resolve(mockElementHandle);
+      }
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
+    });
+
+    // Test with placeholder value
+    const result = await tool.execute({
+      label: '请输入邮箱地址',
+      controlType: '输入框'
+    }, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = JSON.parse(result.content[0].text as string);
+    expect(response).toHaveProperty('xpath');
+  });
+
+  test('should find element by placeholder with partial match', async () => {
+    // Mock waitForSelector to resolve successfully for placeholder
+    const mockElementHandle: any = {
+      evaluate: jest.fn().mockResolvedValue('<input type="text" id="phone" placeholder="手机号码">'),
+    };
+
+    (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
+      // For placeholder elements, return a mock element handle
+      if (selector.includes('placeholder') || selector.includes('手机号')) {
+        return Promise.resolve(mockElementHandle);
+      }
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
+    });
+
+    // Test with partial placeholder value
+    const result = await tool.execute({
+      label: '手机号',
+      controlType: '输入框'
+    }, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = JSON.parse(result.content[0].text as string);
+    expect(response).toHaveProperty('xpath');
+  });
 });

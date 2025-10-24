@@ -493,13 +493,13 @@ export function createToolDefinitions() {
 
     {
       name: "playwright_get_xpath_by_label",
-      description: "根据字段标签获取控件XPath",
+      description: "根据字段标签或placeholder获取控件XPath",
       inputSchema: {
         type: "object",
         properties: {
           label: {
             type: "string",
-            description: "字段标签名称(如:姓名, 性别, 年龄等)"
+            description: "字段标签名称或placeholder值(如:姓名, 性别, 年龄等或请输入姓名...)"
           },
           controlType: {
             type: "string",

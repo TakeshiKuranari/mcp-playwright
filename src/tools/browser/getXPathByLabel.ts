@@ -4,7 +4,7 @@ import { BrowserToolBase } from './base.js';
 import { createErrorResponse, ToolResponse } from '../common/types.js';
 
 /**
- * GetXPathByLabelTool - 根据字段标签获取控件XPath的工具
+ * GetXPathByLabelTool - 根据字段标签或placeholder获取控件XPath的工具
  */
 // 超时时间常量（毫秒）
 const TIMEOUT_MS = 100;
@@ -22,7 +22,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    */
   async execute(
     args: {
-      label: string; // 字段标签名称(如:姓名, 性别, 年龄等)
+      label: string; // 字段标签名称或placeholder值(如:姓名, 性别, 年龄等或请输入姓名...)
       controlType?: string; // 控件类型(可选,如:输入框, 下拉框, 复选框, 单选按钮等)
     },
     context: ToolContext
@@ -73,9 +73,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
   }
 
   /**
-   * 根据标签获取控件的XPath
+   * 根据标签或placeholder获取控件的XPath
    * @param page Playwright页面对象
-   * @param label 字段标签名称
+   * @param label 字段标签名称或placeholder值
    * @param controlType 控件类型(可选)
    * @returns 控件的XPath或null
    */
@@ -95,7 +95,9 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       // 策略6: 查找标签附近的控件 (使用CSS选择器查找相邻元素)
       this.findByNearbyElement.bind(this),
       // 策略7: 直接查找包含标签文本的控件元素
-      this.findByDirectElement.bind(this)
+      this.findByDirectElement.bind(this),
+      // 策略8: 根据placeholder属性查找控件（新增）
+      this.findByPlaceholder.bind(this)
     ];
 
     return this.executeStrategies(page, label, controlType, strategies);
@@ -525,6 +527,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
   /**
    * 策略7: 直接查找包含标签文本的控件元素 - 增强版
    * 使用更灵活的匹配方式，兼容不同HTML结构
+   * 同时支持查找placeholder属性匹配的控件元素
    */
   private async findByDirectElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
     let debugInfo = '';
@@ -572,6 +575,15 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         log(`[findByDirectElement] 按钮元素存在，返回定位XPath: ${buttonXPath}`);
         return { xpath: buttonXPath, debugInfo };
       }
+    }
+
+    // 策略5: 查找placeholder属性匹配的控件元素
+    log(`[findByDirectElement] 查找placeholder属性匹配的控件元素`);
+    const placeholderXPath = `//*[@placeholder='${label}' and (${controlXPath})]`;
+    log(`[findByDirectElement] 检查placeholder匹配的XPath: ${placeholderXPath}`);
+    if (await this.elementExists(page, placeholderXPath, log)) {
+      log(`[findByDirectElement] placeholder匹配的元素存在，返回定位XPath: ${placeholderXPath}`);
+      return { xpath: placeholderXPath, debugInfo };
     }
 
     return { xpath: null, debugInfo };
@@ -716,6 +728,50 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         // 继续尝试下一个标签XPath
         continue;
       }
+    }
+
+    return { xpath: null, debugInfo };
+  }
+
+  /**
+   * 策略8: 根据placeholder属性查找控件（新增）
+   * 直接查找具有指定placeholder属性的控件元素
+   */
+  private async findByPlaceholder(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
+    let debugInfo = '';
+    const log = (message: string) => {
+      debugInfo += message + '\n';
+      console.log(message);
+    };
+
+    log(`[findByPlaceholder] 策略8: 根据placeholder属性查找控件`);
+
+    // 根据控件类型构建关联控件的XPath表达式
+    const controlXPath = this.getControlXPath(controlType);
+
+    // 策略1: 查找placeholder属性完全匹配的控件元素
+    log(`[findByPlaceholder] 查找placeholder属性完全匹配的控件元素`);
+    let placeholderXPath = `//*[@placeholder='${label}' and (${controlXPath})]`;
+    log(`[findByPlaceholder] 检查完全匹配的XPath: ${placeholderXPath}`);
+    if (await this.elementExists(page, placeholderXPath, log)) {
+      log(`[findByPlaceholder] 完全匹配的元素存在，返回定位XPath: ${placeholderXPath}`);
+      return { xpath: placeholderXPath, debugInfo };
+    }
+
+    // 策略2: 查找placeholder属性模糊匹配的控件元素
+    placeholderXPath = `//*[contains(@placeholder, '${label}') and (${controlXPath})]`;
+    log(`[findByPlaceholder] 检查模糊匹配的XPath: ${placeholderXPath}`);
+    if (await this.elementExists(page, placeholderXPath, log)) {
+      log(`[findByPlaceholder] 模糊匹配的元素存在，返回定位XPath: ${placeholderXPath}`);
+      return { xpath: placeholderXPath, debugInfo };
+    }
+
+    // 策略3: 查找placeholder属性匹配但不区分大小写的控件元素
+    placeholderXPath = `//*[translate(@placeholder, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') = translate('${label}', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') and (${controlXPath})]`;
+    log(`[findByPlaceholder] 检查不区分大小写匹配的XPath: ${placeholderXPath}`);
+    if (await this.elementExists(page, placeholderXPath, log)) {
+      log(`[findByPlaceholder] 不区分大小写匹配的元素存在，返回定位XPath: ${placeholderXPath}`);
+      return { xpath: placeholderXPath, debugInfo };
     }
 
     return { xpath: null, debugInfo };
