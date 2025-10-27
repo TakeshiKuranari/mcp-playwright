@@ -7,7 +7,7 @@ import { createErrorResponse, ToolResponse } from '../common/types.js';
  * GetXPathByLabelTool - 根据字段标签或placeholder获取控件XPath的工具
  */
 // 超时时间常量（毫秒）
-const TIMEOUT_MS = 100;
+const TIMEOUT_MS = 50;
 
 export class GetXPathByLabelTool extends BrowserToolBase {
   constructor(server: any) {
@@ -100,7 +100,19 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       this.findByPlaceholder.bind(this)
     ];
 
-    return this.executeStrategies(page, label, controlType, strategies);
+    // 先在主页面查找
+    let result = await this.executeStrategies(page, label, controlType, strategies);
+
+    // 如果在主页面找到了元素，直接返回结果
+    if (result.xpath) {
+      return result;
+    } else {
+      return { xpath: null, debugInfo: result.debugInfo };
+    }
+
+    // // 如果主页面没找到，尝试在iframe中查找
+    // const iframeResult = await this.searchInFrames(page, label, controlType, strategies);
+    // return iframeResult;
   }
 
   /**
@@ -775,5 +787,87 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     }
 
     return { xpath: null, debugInfo };
+  }
+
+  /**
+   * 在所有iframe中查找元素（递归处理嵌套iframe）
+   * @param page Playwright页面对象或Frame对象
+   * @param label 字段标签名称
+   * @param controlType 控件类型(可选)
+   * @param strategies 策略执行顺序数组
+   * @param framePath 当前iframe路径（用于构建完整的xpath）
+   * @param depth 当前递归深度（防止无限递归）
+   * @returns 控件的XPath或null
+   */
+  private async searchInFrames(
+    page: Page,
+    label: string,
+    controlType: string | undefined,
+    strategies: Array<(page: Page, label: string, controlType?: string) => Promise<{ xpath: string | null; debugInfo: string }>>,
+    framePath: string = '',
+    depth: number = 0
+  ): Promise<{ xpath: string | null; debugInfo: string }> {
+    // 防止无限递归，设置最大深度
+    if (depth > 5) {
+      return { xpath: null, debugInfo: `[searchInFrames] 达到最大递归深度，停止搜索\n` };
+    }
+
+    // 检查page对象是否具有frames方法
+    if (typeof page.frames !== 'function') {
+      return { xpath: null, debugInfo: `[searchInFrames] page对象不支持frames方法\n` };
+    }
+
+    let combinedDebugInfo = '';
+
+    try {
+      // 获取页面上所有的frame（包括iframe）
+      const frames = page.frames();
+      combinedDebugInfo += `[searchInFrames] 在深度 ${depth} 找到 ${frames.length - 1} 个frame（排除主页面）\n`;
+
+      // 遍历除主页面外的所有frame
+      for (let i = 1; i < frames.length; i++) {
+        try {
+          const frame = frames[i];
+          const currentFramePath = framePath ? `${framePath}/iframe[${i}]` : `/iframe[${i}]`;
+          combinedDebugInfo += `[searchInFrames] 正在检查frame: ${currentFramePath}\n`;
+
+          // 在当前frame中执行策略
+          const result = await this.executeStrategies(frame as unknown as Page, label, controlType, strategies);
+          combinedDebugInfo += result.debugInfo + '\n';
+
+          if (result.xpath) {
+            // 为frame中的xpath添加frame定位前缀
+            const xpathWithFrame = `${currentFramePath}${result.xpath}`;
+            combinedDebugInfo += `[searchInFrames] 在frame ${currentFramePath} 中找到元素: ${xpathWithFrame}\n`;
+            return { xpath: xpathWithFrame, debugInfo: combinedDebugInfo };
+          }
+
+          // 递归搜索当前frame中的嵌套frame
+          const nestedResult = await this.searchInFrames(
+            frame as unknown as Page,
+            label,
+            controlType,
+            strategies,
+            currentFramePath,
+            depth + 1
+          );
+          combinedDebugInfo += nestedResult.debugInfo + '\n';
+
+          if (nestedResult.xpath) {
+            return { xpath: nestedResult.xpath, debugInfo: combinedDebugInfo };
+          }
+        } catch (frameError) {
+          combinedDebugInfo += `[searchInFrames] 检查frame时出错: ${frameError}\n`;
+          continue;
+        }
+      }
+    } catch (error) {
+      combinedDebugInfo += `[searchInFrames] 遍历frame时出错: ${error}\n`;
+    }
+
+    if (depth === 0) {
+      combinedDebugInfo += '[searchInFrames] 在所有frame中都未找到标签对应的控件\n';
+    }
+    return { xpath: null, debugInfo: combinedDebugInfo };
   }
 }
