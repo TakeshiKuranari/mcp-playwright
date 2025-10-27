@@ -161,4 +161,82 @@ describe('GetXPathByLabelTool', () => {
     const response = JSON.parse(result.content[0].text as string);
     expect(response).toHaveProperty('xpath');
   });
+
+  test('should find button element by text', async () => {
+    // Mock waitForSelector to resolve successfully for button
+    const mockElementHandle: any = {
+      evaluate: jest.fn().mockResolvedValue('<button type="button">确认</button>'),
+    };
+
+    (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
+      // For button elements, return a mock element handle
+      if (selector.includes('button') || selector.includes('确认')) {
+        return Promise.resolve(mockElementHandle);
+      }
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
+    });
+
+    // Test with button control type
+    const result = await tool.execute({
+      label: '确认',
+      controlType: '按钮'
+    }, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = JSON.parse(result.content[0].text as string);
+    expect(response).toHaveProperty('xpath');
+  });
+
+  test('should find input button element by value', async () => {
+    // Mock waitForSelector to resolve successfully for input button
+    const mockElementHandle: any = {
+      evaluate: jest.fn().mockResolvedValue('<input type="button" value="取消">'),
+    };
+
+    (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
+      // For input button elements, return a mock element handle
+      if (selector.includes('input') || selector.includes('取消')) {
+        return Promise.resolve(mockElementHandle);
+      }
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
+    });
+
+    // Test with button control type
+    const result = await tool.execute({
+      label: '取消',
+      controlType: '按钮'
+    }, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = JSON.parse(result.content[0].text as string);
+    expect(response).toHaveProperty('xpath');
+  });
+
+  test('should find button with nested text element', async () => {
+    // Mock waitForSelector to resolve successfully for button with nested text
+    const mockElementHandle: any = {
+      evaluate: jest.fn().mockResolvedValue('<button type="button"><span>查询</span></button>'),
+    };
+
+    (mockPage.waitForSelector as jest.Mock).mockImplementation((selector: string) => {
+      // For button elements with nested text, return a mock element handle
+      if (selector.includes('button') || selector.includes('查询')) {
+        return Promise.resolve(mockElementHandle);
+      }
+      // For element existence checks, also return the mock element handle
+      return Promise.resolve(mockElementHandle);
+    });
+
+    // Test with button control type
+    const result = await tool.execute({
+      label: '查询',
+      controlType: '按钮'
+    }, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = JSON.parse(result.content[0].text as string);
+    expect(response).toHaveProperty('xpath');
+  });
 });

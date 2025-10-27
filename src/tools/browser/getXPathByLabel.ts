@@ -80,6 +80,35 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * @returns 控件的XPath或null
    */
   private async getXPathByLabel(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
+    // 如果是按钮类型，优先使用按钮专用策略
+    if (controlType === '按钮') {
+      const buttonStrategies = [
+        // 按钮专用策略：直接根据按钮文本查找
+        this.findByButtonText.bind(this),
+        // 策略1: 基于锚点的稳定定位策略（新增）
+        this.findByAnchorElement.bind(this),
+        // 策略7: 直接查找包含标签文本的控件元素
+        this.findByDirectElement.bind(this),
+        // 其他通用策略
+        this.findBySiblingElement.bind(this),
+        this.findByAncestorElement.bind(this),
+        this.findByForAttribute.bind(this),
+        this.findByChildElement.bind(this),
+        this.findByNearbyElement.bind(this),
+        this.findByPlaceholder.bind(this)
+      ];
+
+      // 先在主页面查找
+      let result = await this.executeStrategies(page, label, controlType, buttonStrategies);
+
+      // 如果在主页面找到了元素，直接返回结果
+      if (result.xpath) {
+        return result;
+      } else {
+        return { xpath: null, debugInfo: result.debugInfo };
+      }
+    }
+
     // 默认策略执行顺序 - 优化后的顺序
     const strategies = [
       // 策略1: 基于锚点的稳定定位策略（新增）
@@ -163,10 +192,11 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         return "self::input[@type='radio' and not(contains(@style, 'display: none'))]";
       case '按钮':
         // 更严格的按钮匹配，只匹配真正的按钮元素，不匹配按钮样式的链接
-        return "self::button[not(contains(@style, 'display: none'))] | self::input[@type='button' or @type='submit' or @type='reset'] | self::*[@role='button' and not(contains(@style, 'display: none'))]";
+        // 增加了对更多按钮类型的支持，包括具有按钮行为的元素
+        return "self::button[not(contains(@style, 'display: none'))] | self::input[@type='button' or @type='submit' or @type='reset'] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'btn') and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'button') and not(contains(@style, 'display: none'))]";
       default:
         // 默认情况下，返回更稳定的控件表达式
-        return "self::input[not(@type='hidden') and not(contains(@style, 'display: none'))] | self::textarea[not(contains(@style, 'display: none'))] | self::select[not(contains(@style, 'display: none'))] | self::button[not(contains(@style, 'display: none'))] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::*[@role='combobox' and not(contains(@style, 'display: none'))]";
+        return "self::input[not(@type='hidden') and not(contains(@style, 'display: none'))] | self::textarea[not(contains(@style, 'display: none'))] | self::select[not(contains(@style, 'display: none'))] | self::button[not(contains(@style, 'display: none'))] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::*[@role='combobox' and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'btn') and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'button') and not(contains(@style, 'display: none'))]";
     }
   }
 
@@ -784,6 +814,77 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     if (await this.elementExists(page, placeholderXPath, log)) {
       log(`[findByPlaceholder] 不区分大小写匹配的元素存在，返回定位XPath: ${placeholderXPath}`);
       return { xpath: placeholderXPath, debugInfo };
+    }
+
+    return { xpath: null, debugInfo };
+  }
+
+  /**
+   * 策略9: 按钮专用策略 - 直接根据按钮文本查找按钮元素
+   * @param page Playwright页面对象
+   * @param label 按钮文本（如：确认、取消、提交等）
+   * @param controlType 控件类型
+   * @returns 控件的XPath或null
+   */
+  private async findByButtonText(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
+    let debugInfo = '';
+    const log = (message: string) => {
+      debugInfo += message + '\n';
+      console.log(message);
+    };
+
+    log(`[findByButtonText] 策略9: 按钮专用策略 - 直接根据按钮文本查找按钮元素`);
+
+    // 更简单直接的按钮定位策略
+    const buttonXPaths = [
+      // 精确匹配按钮直接文本
+      `//button[text()='${label}']`,
+      `//input[@type='button' and @value='${label}']`,
+      `//input[@type='submit' and @value='${label}']`,
+      `//input[@type='reset' and @value='${label}']`,
+
+      // 精确匹配按钮内嵌套元素的文本（处理span等元素包含文本的情况）
+      `//button[*[text()='${label}']]`,
+      `//button[*[contains(text(), '${label}')]]`,
+
+      // 精确匹配aria-label属性
+      `//button[@aria-label='${label}']`,
+      `//input[@type='button' and @aria-label='${label}']`,
+      `//input[@type='submit' and @aria-label='${label}']`,
+      `//input[@type='reset' and @aria-label='${label}']`,
+
+      // 精确匹配title属性
+      `//button[@title='${label}']`,
+
+      // 模糊匹配按钮直接文本
+      `//button[contains(text(), '${label}')]`,
+      `//*[@role='button' and contains(text(), '${label}')]`,
+
+      // 模糊匹配按钮内嵌套元素的文本
+      `//button[*[contains(text(), '${label}')]]`,
+
+      // 模糊匹配aria-label属性
+      `//button[contains(@aria-label, '${label}')]`,
+      `//input[contains(@aria-label, '${label}') and (@type='button' or @type='submit' or @type='reset')]`,
+
+      // 模糊匹配title属性
+      `//button[contains(@title, '${label}')]`,
+
+      // 通用匹配方式 - 匹配按钮内任意位置包含指定文本的元素
+      `//button//*[contains(text(), '${label}')]`,
+      `//*[(@value='${label}' or @aria-label='${label}' or @title='${label}') and (@type='button' or @type='submit' or @type='reset' or local-name()='button' or @role='button')]`,
+
+      // 最宽松的匹配方式 - 匹配按钮及其子元素中的文本
+      `//button[contains(., '${label}')]`
+    ];
+
+    // 尝试每种按钮XPath表达式
+    for (const xpath of buttonXPaths) {
+      log(`[findByButtonText] 检查按钮XPath: ${xpath}`);
+      if (await this.elementExists(page, xpath, log)) {
+        log(`[findByButtonText] 找到按钮元素，返回定位XPath: ${xpath}`);
+        return { xpath, debugInfo };
+      }
     }
 
     return { xpath: null, debugInfo };
