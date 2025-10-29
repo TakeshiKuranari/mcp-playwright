@@ -7,6 +7,8 @@ export * from './response.js';
 export * from './useragent.js';
 export * from './saveStorageState.js';
 export * from './getXpath.js';
+export * from './getXPathByLabel.js';
+export * from './getTableByHeaderKeyword.js';
 
 // TODO: Add exports for other browser tools as they are implemented
 // export * from './interaction.js'; 

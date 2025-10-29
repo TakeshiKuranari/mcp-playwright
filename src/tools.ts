@@ -4,6 +4,7 @@ import { codegenTools } from './tools/codegen';
 export function createToolDefinitions() {
   return [
     // Codegen tools
+    /*
     {
       name: "start_codegen_session",
       description: "Start a new code generation session to record Playwright actions",
@@ -14,17 +15,17 @@ export function createToolDefinitions() {
             type: "object",
             description: "Code generation options",
             properties: {
-              outputPath: { 
-                type: "string", 
-                description: "Directory path where generated tests will be saved (use absolute path)" 
+              outputPath: {
+                type: "string",
+                description: "Directory path where generated tests will be saved (use absolute path)"
               },
-              testNamePrefix: { 
-                type: "string", 
-                description: "Prefix to use for generated test names (default: 'GeneratedTest')" 
+              testNamePrefix: {
+                type: "string",
+                description: "Prefix to use for generated test names (default: 'GeneratedTest')"
               },
-              includeComments: { 
-                type: "boolean", 
-                description: "Whether to include descriptive comments in generated tests" 
+              includeComments: {
+                type: "boolean",
+                description: "Whether to include descriptive comments in generated tests"
               }
             },
             required: ["outputPath"]
@@ -39,9 +40,9 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to end" 
+          sessionId: {
+            type: "string",
+            description: "ID of the session to end"
           }
         },
         required: ["sessionId"]
@@ -53,9 +54,9 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to retrieve" 
+          sessionId: {
+            type: "string",
+            description: "ID of the session to retrieve"
           }
         },
         required: ["sessionId"]
@@ -67,14 +68,15 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to clear" 
+          sessionId: {
+            type: "string",
+            description: "ID of the session to clear"
           }
         },
         required: ["sessionId"]
       }
     },
+    */
     {
       name: "playwright_navigate",
       description: "Navigate to a URL",
@@ -242,6 +244,7 @@ export function createToolDefinitions() {
         required: [],
       },
     },
+    /*
     {
       name: "playwright_get",
       description: "Perform an HTTP GET request",
@@ -262,8 +265,8 @@ export function createToolDefinitions() {
           url: { type: "string", description: "URL to perform POST operation" },
           value: { type: "string", description: "Data to post in the body" },
           token: { type: "string", description: "Bearer token for authorization" },
-          headers: { 
-            type: "object", 
+          headers: {
+            type: "object",
             description: "Additional headers to include in the request",
             additionalProperties: { type: "string" }
           }
@@ -306,6 +309,7 @@ export function createToolDefinitions() {
         required: ["url"],
       },
     },
+*/
     {
       name: "playwright_expect_response",
       description: "Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.",
@@ -460,6 +464,7 @@ export function createToolDefinitions() {
         required: ["selector"]
       },
     },
+    /*
     {
       name: "playwright_read_generated_code",
       description: "读取gencode保存的ts代码并返回内容",
@@ -471,6 +476,8 @@ export function createToolDefinitions() {
         required: ["sessionId"]
       }
     },
+*/
+
     {
       name: "playwright_connect_over_cdp",
       description: "通过CDP端点接管已打开的浏览器（如 http://localhost:9222）",
@@ -481,6 +488,40 @@ export function createToolDefinitions() {
           windowTitle: { type: "string", description: "可选，接管浏览器后要切换到的窗口标题" }
         },
         required: []
+      }
+    },
+
+    {
+      name: "playwright_get_xpath_by_label",
+      description: "根据字段标签或placeholder获取控件XPath",
+      inputSchema: {
+        type: "object",
+        properties: {
+          label: {
+            type: "string",
+            description: "字段标签名称或placeholder值(如:姓名, 性别, 年龄等或请输入姓名...)"
+          },
+          controlType: {
+            type: "string",
+            description: "控件类型(可选,如:输入框, 下拉框, 复选框, 单选按钮, 按钮等)",
+            enum: ["输入框", "下拉框", "复选框", "单选按钮", "按钮"]
+          }
+        },
+        required: ["label"]
+      }
+    },
+    {
+      name: "playwright_get_table_by_header_keyword",
+      description: "根据表格第一行关键词获取表格顶层元素及XPath",
+      inputSchema: {
+        type: "object",
+        properties: {
+          keyword: {
+            type: "string",
+            description: "表格第一行中的关键词"
+          }
+        },
+        required: ["keyword"]
       }
     },
     {
@@ -534,10 +575,13 @@ export const BROWSER_TOOLS = [
   "playwright_click_and_switch_tab",
   "playwright_get_text",
   "playwright_save_storage_state",
-  "playwright_get_xpath"
+  "playwright_get_xpath",
+  "playwright_get_xpath_by_label",
+  "playwright_get_table_by_header_keyword"
 ];
 
 // API Request tools for conditional launch
+/*
 export const API_TOOLS = [
   "playwright_get",
   "playwright_post",
@@ -545,8 +589,11 @@ export const API_TOOLS = [
   "playwright_delete",
   "playwright_patch"
 ];
+*/
+export const API_TOOLS = [];
 
 // Codegen tools
+/*
 export const CODEGEN_TOOLS = [
   'start_codegen_session',
   'end_codegen_session',
@@ -554,10 +601,20 @@ export const CODEGEN_TOOLS = [
   'clear_codegen_session',
   'playwright_read_generated_code'
 ];
+*/
+// Codegen tools (excluding playwright_read_generated_code)
+/*
+export const CODEGEN_TOOLS = [
+  'start_codegen_session',
+  'end_codegen_session',
+  'get_codegen_session',
+  'clear_codegen_session'
+];
+*/
 
 // All available tools
 export const tools = [
   ...BROWSER_TOOLS,
   ...API_TOOLS,
-  ...CODEGEN_TOOLS
+  // ...CODEGEN_TOOLS  // Codegen tools disabled
 ];

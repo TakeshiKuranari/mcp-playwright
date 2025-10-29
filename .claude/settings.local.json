@@ -1,9 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build)",
+      "Bash(npm run clean)",
+      "Bash(npm test -- src/__tests__/tools/browser/buttonMatching.test.ts)",
+      "Bash(npm test -- src/__tests__/tools/browser/getXPathByLabel.test.ts)",
+      "Bash(npm test)",
+      "Bash(npm test -- src/__tests__/tools/browser/getTableByHeaderKeyword.test.ts)",
+      "WebSearch",
+      "WebFetch(domain:playwright.dev)",
+      "Bash(npm run test)",
+      "Bash(npm run test -- src/__tests__/tools/browser/getXPathByLabel.test.ts)",
+      "Bash(npm test -- src/__tests__/tools/browser/getXPathByLabel.test.ts --verbose)",
+      "Bash(npm test -- --testPathPattern=\"getXPathByLabel.test.ts\")",
+      "Bash(npm test -- --testPathPattern=\"getXPathByLabel.test.ts\" --verbose)",
+      "Bash(npm test -- --testPathPattern=\"getXPathByLabel\")"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "software-engineer"
 }

@@ -4,14 +4,14 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BROWSER_TOOLS, API_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
 import { ActionRecorder } from './tools/codegen/recorder.js';
-import { 
-  startCodegenSession,
-  endCodegenSession,
-  getCodegenSession,
-  clearCodegenSession,
-  readGeneratedTestCode
+import {
+  // startCodegenSession,
+  // endCodegenSession,
+  // getCodegenSession,
+  // clearCodegenSession,
+  // readGeneratedTestCode
 } from './tools/codegen/index.js';
-import { 
+import {
   ScreenshotTool,
   NavigationTool,
   CloseBrowserTool,
@@ -33,9 +33,9 @@ import {
   UploadFileTool
 } from './tools/browser/interaction.js';
 import { GetXpathTool } from './tools/browser/getXpath.js';
-import { 
-  VisibleTextTool, 
-  VisibleHtmlTool 
+import {
+  VisibleTextTool,
+  VisibleHtmlTool
 } from './tools/browser/visiblePage.js';
 import {
   GetRequestTool,
@@ -49,6 +49,8 @@ import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { SaveAsPdfTool } from './tools/browser/output.js';
 import { ClickAndSwitchTabTool } from './tools/browser/interaction.js';
 import { ConnectOverCDPTool } from './tools/browser/connectOverCDP.js';
+import { GetXPathByLabelTool } from './tools/browser/getXPathByLabel.js';
+import { GetTableByHeaderKeywordTool } from './tools/browser/getTableByHeaderKeyword.js';
 
 // Global state
 let browser: Browser | undefined;
@@ -109,6 +111,8 @@ let clickAndSwitchTabTool: ClickAndSwitchTabTool;
 let getTextTool: GetTextTool;
 let connectOverCDPTool: ConnectOverCDPTool;
 let saveStorageStateTool: SaveStorageStateTool;
+let getXPathByLabelTool: GetXPathByLabelTool;
+let getTableByHeaderKeywordTool: GetTableByHeaderKeywordTool;
 
 interface BrowserSettings {
   viewport?: {
@@ -421,11 +425,13 @@ function initializeTools(server: any) {
   if (!getXpathTool) getXpathTool = new GetXpathTool();
 
   // API tools
+  /*
   if (!getRequestTool) getRequestTool = new GetRequestTool(server);
   if (!postRequestTool) postRequestTool = new PostRequestTool(server);
   if (!putRequestTool) putRequestTool = new PutRequestTool(server);
   if (!patchRequestTool) patchRequestTool = new PatchRequestTool(server);
   if (!deleteRequestTool) deleteRequestTool = new DeleteRequestTool(server);
+  */
 
   // Initialize new tools
   if (!goBackTool) goBackTool = new GoBackTool(server);
@@ -436,6 +442,8 @@ function initializeTools(server: any) {
   if (!clickAndSwitchTabTool) clickAndSwitchTabTool = new ClickAndSwitchTabTool(server);
   if (!getTextTool) getTextTool = new GetTextTool(server);
   if (!connectOverCDPTool) connectOverCDPTool = new ConnectOverCDPTool(server);
+  if (!getXPathByLabelTool) getXPathByLabelTool = new GetXPathByLabelTool(server);
+  if (!getTableByHeaderKeywordTool) getTableByHeaderKeywordTool = new GetTableByHeaderKeywordTool(server);
 }
 
 /**
@@ -452,6 +460,7 @@ export async function handleToolCall(
   try {
     // Handle codegen tools
     switch (name) {
+      /*
       case 'start_codegen_session':
         return await handleCodegenResult(startCodegenSession.handler(args));
       case 'end_codegen_session':
@@ -462,6 +471,7 @@ export async function handleToolCall(
         return await handleCodegenResult(clearCodegenSession.handler(args));
       case 'playwright_read_generated_code':
         return await handleCodegenResult(readGeneratedTestCode.handler(args));
+      */
       case 'playwright_connect_over_cdp':
         return await connectOverCDPTool.execute(args);
     }
@@ -625,6 +635,7 @@ export async function handleToolCall(
         return await getXpathTool.execute(args, context);
 
       // API tools
+      /*
       case "playwright_get":
         return await getRequestTool.execute(args, context);
 
@@ -639,6 +650,8 @@ export async function handleToolCall(
 
       case "playwright_delete":
         return await deleteRequestTool.execute(args, context);
+
+      */
 
       // New tools
       case "playwright_go_back":
@@ -655,7 +668,11 @@ export async function handleToolCall(
         return await clickAndSwitchTabTool.execute(args, context);
       case "playwright_get_text":
         return await getTextTool.execute(args, context);
+      case "playwright_get_xpath_by_label":
+        return await getXPathByLabelTool.execute(args, context);
 
+      case "playwright_get_table_by_header_keyword":
+        return await getTableByHeaderKeywordTool.execute(args, context);
       default:
         return {
           content: [{
