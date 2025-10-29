@@ -418,7 +418,7 @@ function initializeTools(server: any) {
   if (!visibleTextTool) visibleTextTool = new VisibleTextTool(server);
   if (!visibleHtmlTool) visibleHtmlTool = new VisibleHtmlTool(server);
   if (!saveStorageStateTool) saveStorageStateTool = new SaveStorageStateTool(server);
-  if (!getXpathTool) getXpathTool = new GetXpathTool(server);
+  if (!getXpathTool) getXpathTool = new GetXpathTool();
 
   // API tools
   if (!getRequestTool) getRequestTool = new GetRequestTool(server);
@@ -517,10 +517,11 @@ export async function handleToolCall(
   const context: ToolContext = {
     server
   };
-  
+
   // Set up browser if needed
   // 如果name是playwright_connect_over_cdp，则不设置浏览器（不然会又启动一个浏览器）
-  if (BROWSER_TOOLS.includes(name) && name !== "playwright_connect_over_cdp") {
+  // 如果name是playwright_get_xpath，则不设置浏览器（因为这个工具不需要浏览器）
+  if (BROWSER_TOOLS.includes(name) && name !== "playwright_connect_over_cdp" && name !== "playwright_get_xpath") {
     const browserSettings = {
       viewport: {
         width: args.width,
@@ -532,7 +533,7 @@ export async function handleToolCall(
       storageState: args.storageState, // Pass storageState to ensureBrowser
       user_data_dir: args.user_data_dir // Pass user_data_dir to ensureBrowser
     };
-    
+
     try {
       context.page = await ensureBrowser(browserSettings);
       context.browser = browser;

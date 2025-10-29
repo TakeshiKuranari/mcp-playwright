@@ -500,9 +500,9 @@ export function createToolDefinitions() {
       inputSchema: {
         type: "object",
         properties: {
-          selector: { type: "string", description: "用于定位元素的CSS选择器" }
+          describe: { type: "string", description: "对目标元素进行描述" }
         },
-        required: ["selector"]
+        // required: ["selector"]
       }
     },
   ] as const satisfies Tool[];
