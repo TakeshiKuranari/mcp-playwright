@@ -9,6 +9,31 @@ import { createErrorResponse, ToolResponse } from '../common/types.js';
 // 超时时间常量（毫秒）
 const TIMEOUT_MS = 50;
 
+// 控件类型枚举
+const CONTROL_TYPES = {
+  INPUT: '输入框',
+  SELECT: '下拉框',
+  CHECKBOX: '复选框',
+  RADIO: '单选按钮',
+  BUTTON: '按钮'
+} as const;
+
+// 策略优先级
+const STRATEGY_PRIORITIES = {
+  ANCHOR: 1,
+  SIBLING: 2,
+  ANCESTOR: 3,
+  FOR_ATTRIBUTE: 4,
+  CHILD: 5,
+  NEARBY: 6,
+  DIRECT: 7,
+  PLACEHOLDER: 8,
+  BUTTON_TEXT: 9
+} as const;
+
+// 最大搜索深度
+const MAX_SEARCH_DEPTH = 3;
+
 export class GetXPathByLabelTool extends BrowserToolBase {
   constructor(server: any) {
     super(server);
@@ -80,12 +105,33 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * @returns 控件的XPath或null
    */
   private async getXPathByLabel(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    // 如果是按钮类型，优先使用按钮专用策略
-    if (controlType === '按钮') {
-      const buttonStrategies = [
-        // 按钮专用策略：直接根据按钮文本查找
+    // 选择策略执行顺序
+    const strategies = this.getSearchStrategies(controlType);
+
+    // 先在主页面查找
+    const result = await this.executeStrategies(page, label, controlType, strategies);
+
+    return result.xpath
+      ? result
+      : { xpath: null, debugInfo: result.debugInfo };
+
+    // // 如果主页面没找到，尝试在iframe中查找
+    // const iframeResult = await this.searchInFrames(page, label, controlType, strategies);
+    // return iframeResult;
+  }
+
+  /**
+   * 根据控件类型获取对应的搜索策略
+   * @param controlType 控件类型
+   * @returns 策略数组
+   */
+  private getSearchStrategies(controlType?: string): Array<(page: Page, label: string, controlType?: string) => Promise<{ xpath: string | null; debugInfo: string }>> {
+    // 按钮专用策略优先顺序
+    if (controlType === CONTROL_TYPES.BUTTON) {
+      return [
+        // 策略9: 按钮专用策略 - 直接根据按钮文本查找
         this.findByButtonText.bind(this),
-        // 策略1: 基于锚点的稳定定位策略（新增）
+        // 策略0: 基于锚点的稳定定位策略
         this.findByAnchorElement.bind(this),
         // 策略7: 直接查找包含标签文本的控件元素
         this.findByDirectElement.bind(this),
@@ -97,21 +143,11 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         this.findByNearbyElement.bind(this),
         this.findByPlaceholder.bind(this)
       ];
-
-      // 先在主页面查找
-      let result = await this.executeStrategies(page, label, controlType, buttonStrategies);
-
-      // 如果在主页面找到了元素，直接返回结果
-      if (result.xpath) {
-        return result;
-      } else {
-        return { xpath: null, debugInfo: result.debugInfo };
-      }
     }
 
-    // 默认策略执行顺序 - 优化后的顺序
-    const strategies = [
-      // 策略1: 基于锚点的稳定定位策略（新增）
+    // 默认策略执行顺序
+    return [
+      // 策略0: 基于锚点的稳定定位策略
       this.findByAnchorElement.bind(this),
       // 策略2: 查找标签后的兄弟元素中的控件
       this.findBySiblingElement.bind(this),
@@ -125,23 +161,24 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       this.findByNearbyElement.bind(this),
       // 策略7: 直接查找包含标签文本的控件元素
       this.findByDirectElement.bind(this),
-      // 策略8: 根据placeholder属性查找控件（新增）
+      // 策略8: 根据placeholder属性查找控件
       this.findByPlaceholder.bind(this)
     ];
+  }
 
-    // 先在主页面查找
-    let result = await this.executeStrategies(page, label, controlType, strategies);
-
-    // 如果在主页面找到了元素，直接返回结果
-    if (result.xpath) {
-      return result;
-    } else {
-      return { xpath: null, debugInfo: result.debugInfo };
-    }
-
-    // // 如果主页面没找到，尝试在iframe中查找
-    // const iframeResult = await this.searchInFrames(page, label, controlType, strategies);
-    // return iframeResult;
+  /**
+   * 创建调试日志函数
+   * @param initialMessage 初始消息
+   * @returns 包含日志记录器和调试信息的对象
+   */
+  private createLogger(initialMessage: string): { log: (message: string) => void; debugInfo: string } {
+    let debugInfo = '';
+    const log = (message: string) => {
+      debugInfo += message + '\n';
+      console.log(message);
+    };
+    log(initialMessage);
+    return { log, debugInfo };
   }
 
   /**
@@ -180,23 +217,46 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * @returns 控件的XPath表达式
    */
   private getControlXPath(controlType?: string): string {
+    // 可见性过滤条件
+    const visibleFilter = "not(contains(@style, 'display: none'))";
+
     switch (controlType) {
-      case '输入框':
+      case CONTROL_TYPES.INPUT:
         // 避免依赖易变的class属性，优先使用更稳定的属性
-        return "self::input[not(@type='hidden' or @type='submit' or @type='button' or @type='reset') and not(contains(@style, 'display: none'))] | self::textarea[not(contains(@style, 'display: none'))]";
-      case '下拉框':
-        return "self::select[not(contains(@style, 'display: none'))]";
-      case '复选框':
-        return "self::input[@type='checkbox' and not(contains(@style, 'display: none'))]";
-      case '单选按钮':
-        return "self::input[@type='radio' and not(contains(@style, 'display: none'))]";
-      case '按钮':
+        return `self::input[not(@type='hidden' or @type='submit' or @type='button' or @type='reset') and ${visibleFilter}] | self::textarea[${visibleFilter}]`;
+
+      case CONTROL_TYPES.SELECT:
+        return `self::select[${visibleFilter}]`;
+
+      case CONTROL_TYPES.CHECKBOX:
+        return `self::input[@type='checkbox' and ${visibleFilter}]`;
+
+      case CONTROL_TYPES.RADIO:
+        return `self::input[@type='radio' and ${visibleFilter}]`;
+
+      case CONTROL_TYPES.BUTTON:
         // 更严格的按钮匹配，只匹配真正的按钮元素，不匹配按钮样式的链接
         // 增加了对更多按钮类型的支持，包括具有按钮行为的元素
-        return "self::button[not(contains(@style, 'display: none'))] | self::input[@type='button' or @type='submit' or @type='reset'] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'btn') and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'button') and not(contains(@style, 'display: none'))]";
+        return [
+          `self::button[${visibleFilter}]`,
+          `self::input[@type='button' or @type='submit' or @type='reset']`,
+          `self::*[@role='button' and ${visibleFilter}]`,
+          `self::*[contains(@class, 'btn') and ${visibleFilter}]`,
+          `self::*[contains(@class, 'button') and ${visibleFilter}]`
+        ].join(' | ');
+
       default:
         // 默认情况下，返回更稳定的控件表达式
-        return "self::input[not(@type='hidden') and not(contains(@style, 'display: none'))] | self::textarea[not(contains(@style, 'display: none'))] | self::select[not(contains(@style, 'display: none'))] | self::button[not(contains(@style, 'display: none'))] | self::*[@role='button' and not(contains(@style, 'display: none'))] | self::*[@role='combobox' and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'btn') and not(contains(@style, 'display: none'))] | self::*[contains(@class, 'button') and not(contains(@style, 'display: none'))]";
+        return [
+          `self::input[not(@type='hidden') and ${visibleFilter}]`,
+          `self::textarea[${visibleFilter}]`,
+          `self::select[${visibleFilter}]`,
+          `self::button[${visibleFilter}]`,
+          `self::*[@role='button' and ${visibleFilter}]`,
+          `self::*[@role='combobox' and ${visibleFilter}]`,
+          `self::*[contains(@class, 'btn') and ${visibleFilter}]`,
+          `self::*[contains(@class, 'button') and ${visibleFilter}]`
+        ].join(' | ');
     }
   }
 
@@ -227,13 +287,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * 增强稳定性，提供更多查找方式
    */
   private async findByForAttribute(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByForAttribute] 策略4: 查找与标签关联的控件 (通过id属性关联)（增强版）`);
+    const { log, debugInfo } = this.createLogger(`[findByForAttribute] 策略${STRATEGY_PRIORITIES.FOR_ATTRIBUTE}: 查找与标签关联的控件 (通过id属性关联)（增强版）`);
 
     // 标准标签元素的XPath表达式
     const labelXPaths = this.getLabelXPaths(label);
@@ -295,17 +349,11 @@ export class GetXPathByLabelTool extends BrowserToolBase {
   }
 
   /**
-   * 策略1: 查找标签后的兄弟元素中的控件 - 增强版
+   * 策略2: 查找标签后的兄弟元素中的控件 - 增强版
    * 使用结构性下标而非具体文本值，增强稳定性
    */
   private async findBySiblingElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findBySiblingElement] 策略2: 查找标签后的兄弟元素中的控件（增强版）`);
+    const { log, debugInfo } = this.createLogger(`[findBySiblingElement] 策略${STRATEGY_PRIORITIES.SIBLING}: 查找标签后的兄弟元素中的控件（增强版）`);
 
     // 标准标签元素的XPath表达式
     const labelXPaths = this.getLabelXPaths(label);
@@ -325,7 +373,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       }
 
       // 策略2: 查找标签后几个兄弟元素中的控件（增强容错性）
-      siblingXPath = `${labelXPath}/following-sibling::*[position()<=3]//*[${controlXPath}][1]`;
+      siblingXPath = `${labelXPath}/following-sibling::*[position()<=${MAX_SEARCH_DEPTH}]//*[${controlXPath}][1]`;
       log(`[findBySiblingElement] 检查标签后多个兄弟元素中的控件: ${siblingXPath}`);
       if (await this.elementExists(page, siblingXPath, log)) {
         log(`[findBySiblingElement] 找到标签后多个兄弟元素中的控件，返回定位XPath: ${siblingXPath}`);
@@ -333,7 +381,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
       }
 
       // 策略3: 查找标签后兄弟元素中的直接控件
-      siblingXPath = `${labelXPath}/following-sibling::*[position()<=2][${controlXPath}]`;
+      siblingXPath = `${labelXPath}/following-sibling::*[position()<=${MAX_SEARCH_DEPTH - 1}][${controlXPath}]`;
       log(`[findBySiblingElement] 检查标签后兄弟元素中的直接控件: ${siblingXPath}`);
       if (await this.elementExists(page, siblingXPath, log)) {
         log(`[findBySiblingElement] 找到标签后兄弟元素中的直接控件，返回定位XPath: ${siblingXPath}`);
@@ -345,17 +393,11 @@ export class GetXPathByLabelTool extends BrowserToolBase {
   }
 
   /**
-   * 策略3: 查找标签内的子元素中的控件 - 增强版
+   * 策略5: 查找标签内的子元素中的控件 - 增强版
    * 增强对嵌套结构的适应性
    */
   private async findByChildElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByChildElement] 策略5: 查找标签内的子元素中的控件（增强版）`);
+    const { log, debugInfo } = this.createLogger(`[findByChildElement] 策略${STRATEGY_PRIORITIES.CHILD}: 查找标签内的子元素中的控件（增强版）`);
 
     // 标准标签元素的XPath表达式
     const labelXPaths = this.getLabelXPaths(label);
@@ -395,7 +437,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略4: 对于按钮类型控件的特殊处理
-        if (controlType === '按钮') {
+        if (controlType === CONTROL_TYPES.BUTTON) {
           // 查找标签内的按钮元素，不依赖具体文本
           childXPath = `${labelXPath}//*[(@value or @aria-label or text() or @title) and (${controlXPath})]`;
           log(`[findByChildElement] 检查标签内按钮元素: ${childXPath}`);
@@ -414,17 +456,11 @@ export class GetXPathByLabelTool extends BrowserToolBase {
   }
 
   /**
-   * 策略4: 查找标签附近的控件 (使用CSS选择器查找相邻元素) - 增强版
+   * 策略6: 查找标签附近的控件 (使用CSS选择器查找相邻元素) - 增强版
    * 增强容错性和查找能力
    */
   private async findByNearbyElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByNearbyElement] 策略6: 查找标签附近的控件 (使用CSS选择器查找相邻元素)（增强版）`);
+    const { log, debugInfo } = this.createLogger(`[findByNearbyElement] 策略${STRATEGY_PRIORITIES.NEARBY}: 查找标签附近的控件 (使用CSS选择器查找相邻元素)（增强版）`);
 
     // 标准标签元素的XPath表达式
     const labelXPaths = this.getLabelXPaths(label);
@@ -442,7 +478,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         log(`[findByNearbyElement] 标签元素已找到: ${labelXPath}`);
 
         // 策略1: 查找标签父元素下的控件（改进版）
-        const parentControlXPath = `${labelXPath}/parent::*//*[${controlXPath} and not(ancestor::*[self::label or self::*[text()='${label}']])][position()<=5]`;
+        const parentControlXPath = `${labelXPath}/parent::*//*[${controlXPath} and not(ancestor::*[self::label or self::*[text()='${label}']])][position()<=${MAX_SEARCH_DEPTH + 2}]`;
         log(`[findByNearbyElement] 检查父元素下的控件(改进版): ${parentControlXPath}`);
         if (await this.elementExists(page, parentControlXPath, log)) {
           log(`[findByNearbyElement] 父元素下的控件存在，返回定位XPath: ${parentControlXPath}`);
@@ -450,7 +486,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略2: 查找标签祖父元素下的控件
-        const grandParentControlXPath = `${labelXPath}/parent::*/parent::*//*[${controlXPath} and not(ancestor::*[self::label or self::*[text()='${label}']])][position()<=10]`;
+        const grandParentControlXPath = `${labelXPath}/parent::*/parent::*//*[${controlXPath} and not(ancestor::*[self::label or self::*[text()='${label}']])][position()<=${MAX_SEARCH_DEPTH * 2 + 4}]`;
         log(`[findByNearbyElement] 检查祖父元素下的控件: ${grandParentControlXPath}`);
         if (await this.elementExists(page, grandParentControlXPath, log)) {
           log(`[findByNearbyElement] 祖父元素下的控件存在，返回定位XPath: ${grandParentControlXPath}`);
@@ -458,7 +494,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略3: 查找标签容器元素下的控件（更宽松的匹配）
-        const containerControlXPath = `${labelXPath}/ancestor::*[position()<=3]//*[${controlXPath} and not(self::label)][position()<=10]`;
+        const containerControlXPath = `${labelXPath}/ancestor::*[position()<=${MAX_SEARCH_DEPTH}]//*[${controlXPath} and not(self::label)][position()<=${MAX_SEARCH_DEPTH * 3 + 1}]`;
         log(`[findByNearbyElement] 检查容器元素下的控件: ${containerControlXPath}`);
         if (await this.elementExists(page, containerControlXPath, log)) {
           log(`[findByNearbyElement] 容器元素下的控件存在，返回定位XPath: ${containerControlXPath}`);
@@ -466,7 +502,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略4: 使用结构性定位查找附近的控件
-        const nearbyControlXPath = `${labelXPath}/following::*[${controlXPath}][position()<=5] | ${labelXPath}/preceding::*[${controlXPath}][position()<=5]`;
+        const nearbyControlXPath = `${labelXPath}/following::*[${controlXPath}][position()<=${MAX_SEARCH_DEPTH + 2}] | ${labelXPath}/preceding::*[${controlXPath}][position()<=${MAX_SEARCH_DEPTH + 2}]`;
         log(`[findByNearbyElement] 检查附近元素中的控件: ${nearbyControlXPath}`);
         if (await this.elementExists(page, nearbyControlXPath, log)) {
           log(`[findByNearbyElement] 附近元素中的控件存在，返回定位XPath: ${nearbyControlXPath}`);
@@ -483,17 +519,11 @@ export class GetXPathByLabelTool extends BrowserToolBase {
   }
 
   /**
-   * 策略2: 查找标签祖先节点下的控件元素 - 增强版
+   * 策略3: 查找标签祖先节点下的控件元素 - 增强版
    * 使用ancestor轴和descendant轴进行更精确的查找
    */
   private async findByAncestorElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByAncestorElement] 策略3: 查找标签祖先节点下的控件元素（增强版）`);
+    const { log, debugInfo } = this.createLogger(`[findByAncestorElement] 策略${STRATEGY_PRIORITIES.ANCESTOR}: 查找标签祖先节点下的控件元素（增强版）`);
 
     // 标准标签元素的XPath表达式
     const labelXPaths = this.getLabelXPaths(label);
@@ -518,7 +548,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略2: 查找标签祖先节点中的控件（使用self::精确匹配）
-        const ancestorControlXPath = `${labelXPath}/ancestor::*[position()<=2]//self::input[not(@type='hidden' or @type='submit' or @type='button' or @type='reset') and not(contains(@style, 'display: none'))] | ${labelXPath}/ancestor::*[position()<=2]//self::textarea[not(contains(@style, 'display: none'))]`;
+        const ancestorControlXPath = `${labelXPath}/ancestor::*[position()<=${MAX_SEARCH_DEPTH}]//self::input[not(@type='hidden' or @type='submit' or @type='button' or @type='reset') and not(contains(@style, 'display: none'))] | ${labelXPath}/ancestor::*[position()<=${MAX_SEARCH_DEPTH}]//self::textarea[not(contains(@style, 'display: none'))]`;
         log(`[findByAncestorElement] 在祖先节点中查找input/textarea控件: ${ancestorControlXPath}`);
         if (await this.elementExists(page, ancestorControlXPath, log)) {
           log(`[findByAncestorElement] 找到祖先节点中的input/textarea控件，返回定位XPath: ${ancestorControlXPath}`);
@@ -572,13 +602,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * 同时支持查找placeholder属性匹配的控件元素
    */
   private async findByDirectElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByDirectElement] 策略7: 直接查找包含标签文本的控件元素（增强版）`);
+    const { log, debugInfo } = this.createLogger(`[findByDirectElement] 策略${STRATEGY_PRIORITIES.DIRECT}: 直接查找包含标签文本的控件元素（增强版）`);
 
     // 根据控件类型构建关联控件的XPath表达式
     const controlXPath = this.getControlXPath(controlType);
@@ -609,7 +633,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
     }
 
     // 策略4: 为按钮类型控件使用更灵活的匹配方式
-    if (controlType === '按钮') {
+    if (controlType === CONTROL_TYPES.BUTTON) {
       // 查找按钮元素，不依赖具体文本
       const buttonXPath = `//*[(@value='${label}' or @aria-label='${label}' or text()='${label}' or contains(text(), '${label}') or @title='${label}') and (${controlXPath})]`;
       log(`[findByDirectElement] 检查按钮元素的XPath: ${buttonXPath}`);
@@ -711,13 +735,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * 利用稳定的"锚点"进行相对定位，使用following-sibling::、preceding-sibling::等轴
    */
   private async findByAnchorElement(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByAnchorElement] 策略0: 基于锚点的稳定定位策略`);
+    const { log, debugInfo } = this.createLogger(`[findByAnchorElement] 策略${STRATEGY_PRIORITIES.ANCHOR}: 基于锚点的稳定定位策略`);
 
     // 标准标签元素的XPath表达式
     const labelXPaths = this.getLabelXPaths(label);
@@ -735,7 +753,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
 
         // 策略1: 查找标签后的兄弟元素中的控件（增强版）
         // 使用结构性下标而非具体文本值
-        const followingSiblingXPath = `${labelXPath}/following-sibling::*[position()<=3]//*[${controlXPath}]`;
+        const followingSiblingXPath = `${labelXPath}/following-sibling::*[position()<=${MAX_SEARCH_DEPTH}]//*[${controlXPath}]`;
         log(`[findByAnchorElement] 检查标签后兄弟元素中的控件: ${followingSiblingXPath}`);
         if (await this.elementExists(page, followingSiblingXPath, log)) {
           log(`[findByAnchorElement] 找到标签后兄弟元素中的控件，返回定位XPath: ${followingSiblingXPath}`);
@@ -743,7 +761,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略2: 查找标签前的兄弟元素中的控件
-        const precedingSiblingXPath = `${labelXPath}/preceding-sibling::*[position()<=3]//*[${controlXPath}]`;
+        const precedingSiblingXPath = `${labelXPath}/preceding-sibling::*[position()<=${MAX_SEARCH_DEPTH}]//*[${controlXPath}]`;
         log(`[findByAnchorElement] 检查标签前兄弟元素中的控件: ${precedingSiblingXPath}`);
         if (await this.elementExists(page, precedingSiblingXPath, log)) {
           log(`[findByAnchorElement] 找到标签前兄弟元素中的控件，返回定位XPath: ${precedingSiblingXPath}`);
@@ -759,7 +777,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
         }
 
         // 策略4: 查找标签祖先元素下的控件
-        const ancestorControlXPath = `${labelXPath}/ancestor::*[position()<=2]//*[${controlXPath} and not(ancestor::*[self::label or self::*[text()='${label}']])]`;
+        const ancestorControlXPath = `${labelXPath}/ancestor::*[position()<=${MAX_SEARCH_DEPTH}]//*[${controlXPath} and not(ancestor::*[self::label or self::*[text()='${label}']])]`;
         log(`[findByAnchorElement] 检查祖先元素下的控件: ${ancestorControlXPath}`);
         if (await this.elementExists(page, ancestorControlXPath, log)) {
           log(`[findByAnchorElement] 找到祖先元素下的控件，返回定位XPath: ${ancestorControlXPath}`);
@@ -780,13 +798,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * 直接查找具有指定placeholder属性的控件元素
    */
   private async findByPlaceholder(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByPlaceholder] 策略8: 根据placeholder属性查找控件`);
+    const { log, debugInfo } = this.createLogger(`[findByPlaceholder] 策略${STRATEGY_PRIORITIES.PLACEHOLDER}: 根据placeholder属性查找控件`);
 
     // 根据控件类型构建关联控件的XPath表达式
     const controlXPath = this.getControlXPath(controlType);
@@ -827,13 +839,7 @@ export class GetXPathByLabelTool extends BrowserToolBase {
    * @returns 控件的XPath或null
    */
   private async findByButtonText(page: Page, label: string, controlType?: string): Promise<{ xpath: string | null; debugInfo: string }> {
-    let debugInfo = '';
-    const log = (message: string) => {
-      debugInfo += message + '\n';
-      console.log(message);
-    };
-
-    log(`[findByButtonText] 策略9: 按钮专用策略 - 直接根据按钮文本查找按钮元素`);
+    const { log, debugInfo } = this.createLogger(`[findByButtonText] 策略${STRATEGY_PRIORITIES.BUTTON_TEXT}: 按钮专用策略 - 直接根据按钮文本查找按钮元素`);
 
     // 更简单直接的按钮定位策略
     const buttonXPaths = [

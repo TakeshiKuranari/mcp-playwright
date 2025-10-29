@@ -512,7 +512,7 @@ export function createToolDefinitions() {
     },
     {
       name: "playwright_get_table_by_header_keyword",
-      description: "根据表单第一行关键词获取表格顶层元素及XPath",
+      description: "根据表格第一行关键词获取表格顶层元素及XPath",
       inputSchema: {
         type: "object",
         properties: {
